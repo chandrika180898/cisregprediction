@@ -1,23 +1,44 @@
 #!/bin/bash
 
+# Function to log messages
+log() {
+    echo "[INFO] $1"
+}
+
+# Function to handle errors
+handle_error() {
+    echo "[ERROR] $1"
+    exit 1
+}
+
 # Update package list and install system dependencies
-sudo apt-get update
-sudo apt-get install -y libatlas-base-dev build-essential
+log "Updating package list and installing system dependencies..."
+sudo apt-get update || handle_error "Failed to update package list"
+sudo apt-get install -y libatlas-base-dev build-essential || handle_error "Failed to install system dependencies"
 
 # Upgrade pip, setuptools, and wheel
-pip install --upgrade pip setuptools wheel
+log "Upgrading pip, setuptools, and wheel..."
+pip install --upgrade pip setuptools wheel || handle_error "Failed to upgrade pip, setuptools, or wheel"
 
 # Clear pip cache
-pip cache purge
+log "Clearing pip cache..."
+pip cache purge || handle_error "Failed to clear pip cache"
 
 # Create a new virtual environment (optional)
-python -m venv myenv
+log "Creating a new virtual environment..."
+python -m venv myenv || handle_error "Failed to create virtual environment"
 source myenv/bin/activate
 
 # Install Streamlit and Pandas with verbose output
-pip install -v streamlit==1.23.1
-pip install -v pandas==1.5.3 --only-binary :all:
+log "Installing Streamlit..."
+pip install -v streamlit==1.23.1 || handle_error "Failed to install Streamlit"
+
+log "Installing Pandas..."
+pip install -v pandas==1.5.3 --only-binary :all: || handle_error "Failed to install Pandas"
 
 # Check versions
+log "Checking Python and pip versions..."
 python --version
 pip --version
+
+log "Installation completed successfully!"
