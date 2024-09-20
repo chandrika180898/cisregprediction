@@ -8,3 +8,4 @@ total_sum = num1 + num2 + num3
 
 # Print the result
 print("The sum of the three numbers is:", total_sum)
+
