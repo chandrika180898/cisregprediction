@@ -1,6 +1,7 @@
-streamlit==1.23.1
-pandas==1.5.3
-numpy==1.24.1
-matplotlib==3.6.3
-seaborn==0.12.2
-biopython==1.81
+pip install --upgrade pip setuptools wheel
+sudo apt-get install build-essential
+pip install streamlit==1.23.1
+pip install pandas==1.5.3
+python -m venv myenv
+source myenv/bin/activate  # On Windows use `myenv\Scripts\activate`
+pip install -r requirements.txt
