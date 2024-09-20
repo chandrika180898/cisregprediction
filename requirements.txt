@@ -1,7 +1,12 @@
-pip install --upgrade pip setuptools wheel
-sudo apt-get install build-essential
+
+sudo apt-get install libatlas-base-dev
+pip install pandas==1.5.2
+pip install streamlit==1.22.0
+deactivate  # If currently in the virtual environment
+rm -rf myenv  # Delete the existing environment
+python -m venv myenv  # Create a new one
+source myenv/bin/activate  # Activate the new environment
+pip install -r requirements.txt  # Reinstall dependencies
 pip install streamlit==1.23.1
 pip install pandas==1.5.3
-python -m venv myenv
-source myenv/bin/activate  # On Windows use `myenv\Scripts\activate`
-pip install -r requirements.txt
+pip install -v pandas==1.5.3
