@@ -1,4 +1,10 @@
-pip install streamlit pandas numpy matplotlib seaborn biopython
+streamlit==1.15.0
+pandas==1.4.3
+numpy==1.21.0
+matplotlib==3.4.3
+seaborn==0.11.2
+biopython==1.79
+
 
 import streamlit as st
 import pandas as pd     
