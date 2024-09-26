@@ -1,12 +1,14 @@
+sudo apt-get install python3-distutils
 streamlit==1.23.1
 pandas==1.5.3
-numpy==1.24.1
+numpy  # remove the version constraint
 matplotlib==3.6.3
 seaborn==0.12.2
 biopython==1.81
-streamlit
-pandas
-numpy
-matplotlib
-seaborn
-biopython
+pip cache purge
+streamlit==1.23.1
+pandas==1.5.3
+numpy==1.23.5  # Alternatively, try without the version to automatically install the best version.
+matplotlib==3.6.3
+seaborn==0.12.2
+biopython==1.81
