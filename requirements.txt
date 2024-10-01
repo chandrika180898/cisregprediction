@@ -1,14 +1,10 @@
-sudo apt-get install python3-distutils
-streamlit==1.23.1
-pandas==1.5.3
-numpy  # remove the version constraint
-matplotlib==3.6.3
-seaborn==0.12.2
-biopython==1.81
+sudo apt-get update
+sudo apt-get install -y python3-distutils build-essential libatlas-base-dev
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+biopython
 pip cache purge
-streamlit==1.23.1
-pandas==1.5.3
-numpy==1.23.5  # Alternatively, try without the version to automatically install the best version.
-matplotlib==3.6.3
-seaborn==0.12.2
-biopython==1.81
+pip install --upgrade pip setuptools wheel
