@@ -4,10 +4,9 @@ from Bio import SeqIO
 from io import StringIO
 import re
 import plotly.express as px
-from concurrent.futures import ProcessPoolExecutor
 from reportlab.pdfgen import canvas
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
+from reportlab.lib.pagesizes import letter
+from io import BytesIO
 from Bio.Seq import Seq
 
 st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')
@@ -55,64 +54,76 @@ def find_motifs(sequence):
     results.extend(find_inverted_repeats(sequence))
     return results
 
-def analyze_sequences_parallel(sequences):
+def analyze_sequences(sequences):
     data = []
-    with ProcessPoolExecutor() as executor:
-        results = list(executor.map(find_motifs, [record.seq for record in sequences]))
-        for record, motif_results in zip(sequences, results):
-            for motif in motif_results:
-                data.append({
-                    "Sequence ID": record.id,
-                    **motif,
-                    "Length": len(record.seq)
-                })
+    for record in sequences:
+        motif_results = find_motifs(record.seq)
+        for motif in motif_results:
+            data.append({
+                "Sequence ID": record.id,
+                **motif,
+                "Length": len(record.seq)
+            })
     return pd.DataFrame(data)
 
 def visualize_motifs(df):
-    fig = px.scatter(df, x='Start', y='Sequence ID', color='Motif',
-                     hover_data=['Matched Sequence'],
-                     title="Motif Distribution Across Sequences")
-    st.plotly_chart(fig)
+    if not df.empty:
+        fig = px.scatter(df, x='Start', y='Sequence ID', color='Motif',
+                         hover_data=['Matched Sequence'],
+                         title="Motif Distribution Across Sequences")
+        st.plotly_chart(fig)
+    else:
+        st.warning("No motifs to visualize.")
 
 def generate_pdf(df):
-    c = canvas.Canvas("motif_report.pdf")
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
     c.drawString(100, 800, "DNA Motif Analysis Report")
     y = 780
     for i, row in df.iterrows():
         c.drawString(100, y, f"{row['Sequence ID']} | {row['Motif']} | Start: {row['Start']} | End: {row['End']}")
         y -= 20
+        if y < 50:  # Start a new page if space runs out
+            c.showPage()
+            y = 780
     c.save()
+    buffer.seek(0)
+    return buffer
 
 def process_uploaded_files(uploaded_files):
     all_results = pd.DataFrame()
     for uploaded_file in uploaded_files:
-        fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
-        results_df = analyze_sequences_parallel(fasta_sequences)
-        all_results = pd.concat([all_results, results_df], ignore_index=True)
+        try:
+            fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
+            if fasta_sequences:
+                results_df = analyze_sequences(fasta_sequences)
+                all_results = pd.concat([all_results, results_df], ignore_index=True)
+            else:
+                st.error(f"No valid sequences in {uploaded_file.name}")
+        except Exception as e:
+            st.error(f"Error processing {uploaded_file.name}: {str(e)}")
     return all_results
 
 if uploaded_files:
     results_df = process_uploaded_files(uploaded_files)
     
-    if 'Matched Sequence' in results_df.columns:
+    if not results_df.empty and 'Matched Sequence' in results_df.columns:
         results_df['Matched Sequence'] = results_df['Matched Sequence'].apply(lambda x: str(x) if isinstance(x, Seq) else x)
+        st.write("### Motif Analysis Results")
+        st.dataframe(results_df)
+        visualize_motifs(results_df)
+        
+        if st.button("Generate PDF Report"):
+            pdf_buffer = generate_pdf(results_df)
+            st.download_button(
+                "Download PDF Report", pdf_buffer, file_name="motif_analysis_report.pdf")
+
+        csv = results_df.to_csv(index=False)
+        st.download_button(
+            label="Download CSV",
+            data=csv,
+            file_name="motif_analysis_results.csv",
+            mime="text/csv"
+        )
     else:
         st.error("No motifs found or the 'Matched Sequence' column is missing!")
-
-    st.write("### Motif Analysis Results")
-    st.dataframe(results_df)
-    visualize_motifs(results_df)
-    
-    if st.button("Generate PDF Report"):
-        generate_pdf(results_df)
-        with open("motif_report.pdf", "rb") as pdf:
-            st.download_button(
-                "Download PDF Report", pdf, file_name="motif_analysis_report.pdf")
-
-    csv = results_df.to_csv(index=False)
-    st.download_button(
-        label="Download CSV",
-        data=csv,
-        file_name="motif_analysis_results.csv",
-        mime="text/csv"
-    )
