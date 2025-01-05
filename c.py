@@ -9,11 +9,27 @@ from reportlab.lib.pagesizes import letter
 from io import BytesIO
 from Bio.Seq import Seq
 
+# Title and Description
 st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')
 st.write('Upload multiple FASTA files to analyze DNA motifs, predict promoter regions, and visualize results.')
 
+# Display Images of Motifs
+st.header("Non-B DNA Motif Structures")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.image("images/utr_image.jpg", caption="Untranslated Region (UTR)", use_column_width=True)
+with col2:
+    st.image("images/z_dna.jpg", caption="Z-DNA Structure", use_column_width=True)
+with col3:
+    st.image("images/g_quadruplex.jpg", caption="G-Quadruplex", use_column_width=True)
+
+st.write("The images above represent different DNA motifs analyzed during the sequence processing.")
+
+# Upload Section
 uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
 
+# Motif Patterns
 motifs = {
     "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
     "Z-DNA": re.compile(r'(CG){6,}'),
@@ -26,6 +42,7 @@ motifs = {
     "Triplex": re.compile(r'(A{3,}[ATGC]{1,}A{3,})')
 }
 
+# Find Inverted Repeats
 def find_inverted_repeats(sequence):
     inverted_repeat_results = []
     pattern = r'([ATGC]{3,})[ATGC]{0,10}([ATGC]{3,})'
@@ -41,6 +58,7 @@ def find_inverted_repeats(sequence):
             })
     return inverted_repeat_results
 
+# Find Motifs
 def find_motifs(sequence):
     results = []
     for motif_name, motif_pattern in motifs.items():
@@ -54,6 +72,7 @@ def find_motifs(sequence):
     results.extend(find_inverted_repeats(sequence))
     return results
 
+# Analyze Sequences
 def analyze_sequences(sequences):
     data = []
     for record in sequences:
@@ -66,6 +85,7 @@ def analyze_sequences(sequences):
             })
     return pd.DataFrame(data)
 
+# Visualization
 def visualize_motifs(df):
     if not df.empty:
         fig = px.scatter(df, x='Start', y='Sequence ID', color='Motif',
@@ -75,6 +95,7 @@ def visualize_motifs(df):
     else:
         st.warning("No motifs to visualize.")
 
+# Generate PDF Report
 def generate_pdf(df):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
@@ -90,6 +111,7 @@ def generate_pdf(df):
     buffer.seek(0)
     return buffer
 
+# Process Uploaded Files
 def process_uploaded_files(uploaded_files):
     all_results = pd.DataFrame()
     for uploaded_file in uploaded_files:
@@ -104,6 +126,7 @@ def process_uploaded_files(uploaded_files):
             st.error(f"Error processing {uploaded_file.name}: {str(e)}")
     return all_results
 
+# Main Analysis Workflow
 if uploaded_files:
     results_df = process_uploaded_files(uploaded_files)
     
