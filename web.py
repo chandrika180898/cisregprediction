@@ -1,159 +1,137 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "d98e5ae6-5aca-486d-b25e-ac4353861a72",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import streamlit as st\n",
-    "import pandas as pd\n",
-    "from Bio import SeqIO\n",
-    "from io import StringIO\n",
-    "import re\n",
-    "import plotly.express as px\n",
-    "from concurrent.futures import ProcessPoolExecutor\n",
-    "from reportlab.pdfgen import canvas\n",
-    "from Bio.Seq import Seq\n",
-    "\n",
-    "st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')\n",
-    "st.write('Upload multiple FASTA files to analyze DNA motifs, predict promoter regions, and visualize results.')\n",
-    "\n",
-    "uploaded_files = st.file_uploader(\"Upload FASTA Files\", type=['fasta'], accept_multiple_files=True)\n",
-    "\n",
-    "# Updated motifs dictionary to include H-DNA and R-Loop motifs\n",
-    "motifs = {\n",
-    "    \"Slipped DNA\": re.compile(r'([ATGC]{2,6})\\1{1,}'),\n",
-    "    \"Z-DNA\": re.compile(r'(CG){6,}'),\n",
-    "    \"Short Tandem Repeat\": re.compile(r'([ATGC]{2,6})\\1{2,}'),\n",
-    "    \"I-Motif\": re.compile(r'((C[A,T]C){3,})'),\n",
-    "    \"R-Loop\": re.compile(r'(A{4,}[CG]{2,}A{4,})'),\n",
-    "    \"Cruciform\": re.compile(r'([ATGC]{4,})\\1{2,}'),\n",
-    "    \"G-Quadruplex\": re.compile(r'(G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,})'),\n",
-    "    \"Hairpin\": re.compile(r'([ATGC]{4,})\\1{1,}'),\n",
-    "    \"Triplex\": re.compile(r'(A{3,}[ATGC]{1,}A{3,})'),\n",
-    "    \"H-DNA\": re.compile(r'([AG]{4,}[CT]{4,}[AG]{4,})'),  # Example pattern\n",
-    "    \"Triplex-forming oligonucleotide (TFO)\": re.compile(r'([GATC]{6,}[AG]{4,}[CT]{4,})')  # Example pattern\n",
-    "}\n",
-    "\n",
-    "# Function to find inverted repeats\n",
-    "def find_inverted_repeats(sequence):\n",
-    "    inverted_repeat_results = []\n",
-    "    pattern = r'([ATGC]{3,})[ATGC]{0,10}([ATGC]{3,})'\n",
-    "    for match in re.finditer(pattern, str(sequence)):\n",
-    "        part1 = match.group(1)\n",
-    "        part2 = match.group(2)[::-1]\n",
-    "        if part1 == part2:\n",
-    "            inverted_repeat_results.append({\n",
-    "                \"Motif\": \"Inverted Repeat\",\n",
-    "                \"Start\": match.start() + 1,\n",
-    "                \"End\": match.end(),\n",
-    "                \"Matched Sequence\": sequence[match.start():match.end()]\n",
-    "            })\n",
-    "    return inverted_repeat_results\n",
-    "\n",
-    "# Function to find motifs\n",
-    "def find_motifs(sequence):\n",
-    "    results = []\n",
-    "    for motif_name, motif_pattern in motifs.items():\n",
-    "        for match in motif_pattern.finditer(str(sequence)):\n",
-    "            results.append({\n",
-    "                \"Motif\": motif_name,\n",
-    "                \"Start\": match.start() + 1,\n",
-    "                \"End\": match.end(),\n",
-    "                \"Matched Sequence\": sequence[match.start():match.end()]\n",
-    "            })\n",
-    "    results.extend(find_inverted_repeats(sequence))\n",
-    "    return results\n",
-    "\n",
-    "# Parallel sequence analysis\n",
-    "def analyze_sequences_parallel(sequences):\n",
-    "    data = []\n",
-    "    with ProcessPoolExecutor() as executor:\n",
-    "        results = list(executor.map(find_motifs, [record.seq for record in sequences]))\n",
-    "        for record, motif_results in zip(sequences, results):\n",
-    "            for motif in motif_results:\n",
-    "                data.append({\n",
-    "                    \"Sequence ID\": record.id,\n",
-    "                    **motif,\n",
-    "                    \"Length\": len(record.seq)\n",
-    "                })\n",
-    "    return pd.DataFrame(data)\n",
-    "\n",
-    "# Visualization\n",
-    "def visualize_motifs(df):\n",
-    "    fig = px.scatter(df, x='Start', y='Sequence ID', color='Motif',\n",
-    "                     hover_data=['Matched Sequence'],\n",
-    "                     title=\"Motif Distribution Across Sequences\")\n",
-    "    st.plotly_chart(fig)\n",
-    "\n",
-    "# PDF generation\n",
-    "def generate_pdf(df):\n",
-    "    c = canvas.Canvas(\"motif_report.pdf\")\n",
-    "    c.drawString(100, 800, \"DNA Motif Analysis Report\")\n",
-    "    y = 780\n",
-    "    for i, row in df.iterrows():\n",
-    "        c.drawString(100, y, f\"{row['Sequence ID']} | {row['Motif']} | Start: {row['Start']} | End: {row['End']}\")\n",
-    "        y -= 20\n",
-    "    c.save()\n",
-    "\n",
-    "# Process uploaded files\n",
-    "def process_uploaded_files(uploaded_files):\n",
-    "    all_results = pd.DataFrame()\n",
-    "    for uploaded_file in uploaded_files:\n",
-    "        fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))\n",
-    "        results_df = analyze_sequences_parallel(fasta_sequences)\n",
-    "        all_results = pd.concat([all_results, results_df], ignore_index=True)\n",
-    "    return all_results\n",
-    "\n",
-    "if uploaded_files:\n",
-    "    results_df = process_uploaded_files(uploaded_files)\n",
-    "    \n",
-    "    if 'Matched Sequence' in results_df.columns:\n",
-    "        results_df['Matched Sequence'] = results_df['Matched Sequence'].apply(lambda x: str(x) if isinstance(x, Seq) else x)\n",
-    "    else:\n",
-    "        st.error(\"No motifs found or the 'Matched Sequence' column is missing!\")\n",
-    "\n",
-    "    st.write(\"### Motif Analysis Results\")\n",
-    "    st.dataframe(results_df)\n",
-    "    visualize_motifs(results_df)\n",
-    "    \n",
-    "    if st.button(\"Generate PDF Report\"):\n",
-    "        generate_pdf(results_df)\n",
-    "        with open(\"motif_report.pdf\", \"rb\") as pdf:\n",
-    "            st.download_button(\n",
-    "                \"Download PDF Report\", pdf, file_name=\"motif_analysis_report.pdf\")\n",
-    "\n",
-    "    csv = results_df.to_csv(index=False)\n",
-    "    st.download_button(\n",
-    "        label=\"Download CSV\",\n",
-    "        data=csv,\n",
-    "        file_name=\"motif_analysis_results.csv\",\n",
-    "        mime=\"text/csv\"\n",
-    "    )\n"
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.11.7"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
+import streamlit as st
+import pandas as pd
+from Bio import SeqIO
+from io import StringIO
+import re
+import plotly.express as px
+from concurrent.futures import ProcessPoolExecutor
+from reportlab.pdfgen import canvas
+from Bio.Seq import Seq
+
+execution_metadata = {
+    "execution_count": None,
+    "status": "running",
+    "error": None
 }
+
+st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')
+st.write('Upload multiple FASTA files to analyze DNA motifs, predict promoter regions, and visualize results.')
+
+uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
+
+# Updated motifs dictionary to include H-DNA and R-Loop motifs
+motifs = {
+    "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
+    "Z-DNA": re.compile(r'(CG){6,}'),
+    "Short Tandem Repeat": re.compile(r'([ATGC]{2,6})\1{2,}'),
+    "I-Motif": re.compile(r'((C[A,T]C){3,})'),
+    "R-Loop": re.compile(r'(A{4,}[CG]{2,}A{4,})'),
+    "Cruciform": re.compile(r'([ATGC]{4,})\1{2,}'),
+    "G-Quadruplex": re.compile(r'(G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,})'),
+    "Hairpin": re.compile(r'([ATGC]{4,})\1{1,}'),
+    "Triplex": re.compile(r'(A{3,}[ATGC]{1,}A{3,})'),
+    "H-DNA": re.compile(r'([AG]{4,}[CT]{4,}[AG]{4,})'),
+    "Triplex-forming oligonucleotide (TFO)": re.compile(r'([GATC]{6,}[AG]{4,}[CT]{4,})')
+}
+
+# Function to find inverted repeats
+def find_inverted_repeats(sequence):
+    inverted_repeat_results = []
+    pattern = r'([ATGC]{3,})[ATGC]{0,10}([ATGC]{3,})'
+    for match in re.finditer(pattern, str(sequence)):
+        part1 = match.group(1)
+        part2 = match.group(2)[::-1]
+        if part1 == part2:
+            inverted_repeat_results.append({
+                "Motif": "Inverted Repeat",
+                "Start": match.start() + 1,
+                "End": match.end(),
+                "Matched Sequence": sequence[match.start():match.end()]
+            })
+    return inverted_repeat_results
+
+# Function to find motifs
+def find_motifs(sequence):
+    results = []
+    for motif_name, motif_pattern in motifs.items():
+        for match in motif_pattern.finditer(str(sequence)):
+            results.append({
+                "Motif": motif_name,
+                "Start": match.start() + 1,
+                "End": match.end(),
+                "Matched Sequence": sequence[match.start():match.end()]
+            })
+    results.extend(find_inverted_repeats(sequence))
+    return results
+
+# Parallel sequence analysis
+def analyze_sequences_parallel(sequences):
+    data = []
+    with ProcessPoolExecutor() as executor:
+        results = list(executor.map(find_motifs, [record.seq for record in sequences]))
+        for record, motif_results in zip(sequences, results):
+            for motif in motif_results:
+                data.append({
+                    "Sequence ID": record.id,
+                    **motif,
+                    "Length": len(record.seq)
+                })
+    return pd.DataFrame(data)
+
+# Visualization
+def visualize_motifs(df):
+    fig = px.scatter(df, x='Start', y='Sequence ID', color='Motif',
+                     hover_data=['Matched Sequence'],
+                     title="Motif Distribution Across Sequences")
+    st.plotly_chart(fig)
+
+# PDF generation
+def generate_pdf(df):
+    c = canvas.Canvas("motif_report.pdf")
+    c.drawString(100, 800, "DNA Motif Analysis Report")
+    y = 780
+    for i, row in df.iterrows():
+        c.drawString(100, y, f"{row['Sequence ID']} | {row['Motif']} | Start: {row['Start']} | End: {row['End']}")
+        y -= 20
+    c.save()
+
+# Process uploaded files
+def process_uploaded_files(uploaded_files):
+    all_results = pd.DataFrame()
+    for uploaded_file in uploaded_files:
+        fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
+        results_df = analyze_sequences_parallel(fasta_sequences)
+        all_results = pd.concat([all_results, results_df], ignore_index=True)
+    return all_results
+
+if uploaded_files:
+    try:
+        results_df = process_uploaded_files(uploaded_files)
+        
+        if 'Matched Sequence' in results_df.columns:
+            results_df['Matched Sequence'] = results_df['Matched Sequence'].apply(lambda x: str(x) if isinstance(x, Seq) else x)
+        else:
+            st.error("No motifs found or the 'Matched Sequence' column is missing!")
+
+        st.write("### Motif Analysis Results")
+        st.dataframe(results_df)
+        visualize_motifs(results_df)
+        
+        if st.button("Generate PDF Report"):
+            generate_pdf(results_df)
+            with open("motif_report.pdf", "rb") as pdf:
+                st.download_button(
+                    "Download PDF Report", pdf, file_name="motif_analysis_report.pdf")
+
+        csv = results_df.to_csv(index=False)
+        st.download_button(
+            label="Download CSV",
+            data=csv,
+            file_name="motif_analysis_results.csv",
+            mime="text/csv"
+        )
+        execution_metadata["status"] = "completed"
+    except Exception as e:
+        execution_metadata["status"] = "error"
+        execution_metadata["error"] = str(e)
+        st.error(f"An error occurred: {e}")
