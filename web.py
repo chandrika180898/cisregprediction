@@ -16,6 +16,7 @@ execution_metadata = {
 
 st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')
 st.write('Upload multiple FASTA files to analyze DNA motifs, predict promoter regions, and visualize results.')
+st.image('https://github.com/yourusername/yourrepository/blob/main/imges/image1.png', caption='DNA Structure')
 
 uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
 
