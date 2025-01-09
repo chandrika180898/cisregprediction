@@ -4,8 +4,6 @@ from Bio import SeqIO
 from io import StringIO
 import re
 import plotly.express as px
-from concurrent.futures import ProcessPoolExecutor
-from reportlab.pdfgen import canvas
 from Bio.Seq import Seq
 
 # Title and description
@@ -13,7 +11,7 @@ st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')
 st.write('Upload multiple FASTA files to analyze DNA motifs, predict promoter regions, and visualize results.')
 
 # Displaying images
-st.image('images/k.png', caption='NON-B-DNA STRUCTURES')
+st.image('images/k.png', caption='Advanced DNA Analysis')
 
 # Uploading files
 uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
@@ -78,6 +76,14 @@ if uploaded_files:
     results_df = pd.DataFrame(results)
     st.write("Results Overview:")
     st.dataframe(results_df)
+
+    # Visualization
+    if not results_df.empty:
+        motif_counts = results_df['Motif'].value_counts().reset_index()
+        motif_counts.columns = ['Motif', 'Count']
+        st.write("Motif Occurrence Visualization:")
+        fig = px.bar(motif_counts, x='Motif', y='Count', title='Motif Occurrence Count', labels={'Count': 'Number of Occurrences'})
+        st.plotly_chart(fig)
 
     # Download results
     csv = results_df.to_csv(index=False)
