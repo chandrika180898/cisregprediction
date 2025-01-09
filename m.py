@@ -13,6 +13,7 @@ execution_metadata = {
     "status": "running",
     "error": None
 }
+streamlit cache clear
 
 st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')
 st.write('Upload multiple FASTA files to analyze DNA motifs, predict promoter regions, and visualize results.')
