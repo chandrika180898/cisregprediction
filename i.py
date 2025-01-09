@@ -13,12 +13,7 @@ st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')
 st.write('Upload multiple FASTA files to analyze DNA motifs, predict promoter regions, and visualize results.')
 
 # Displaying images
-st.image('images/Slide2.PNG', caption='APR')
-st.image('images/Slide3.PNG', caption='DR')
-st.image('images/Slide4.PNG', caption='GQ')
-st.image('images/Slide5.PNG', caption='CRUCIFORM')
-st.image('images/Slide6.PNG', caption='TRIPLEX')
-st.image('images/Slide7.PNG', caption='Z-DNA')
+st.image('images/k.png', caption='NON-B-DNA STRUCTURES')
 
 # Uploading files
 uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
