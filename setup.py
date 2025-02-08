@@ -9,8 +9,8 @@ setup(
     description='CisRegSeeker is a CLI tool for identifying and analyzing cis-regulatory elements in genomic sequences.',  # Short description
     long_description=open('README.md').read(),  # Full description from README.md
     long_description_content_type='text/markdown',  # Content type for long description
-    author='[Your Name]',  # Replace with actual author names
-    author_email='[Your Email]',  # Replace with actual email
+    author='[chandrika]',  # Replace with actual author names
+    author_email='[chandl]',  # Replace with actual email
     url='https://github.com/[your-github]/CisRegSeeker',  # Update with your GitHub repo URL
     packages=find_packages(),  # Automatically find all packages in the project
     entry_points={
