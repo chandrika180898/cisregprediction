@@ -33,11 +33,11 @@ if page == "About":
 elif page == "Contact":
     st.title("Contact")
     st.write("""
-        **Dr. YVR**  
-        📧 Email: sdbff@gmail.com  
+        **Dr. Y V Rajesh**  
+        📧 Email: yvrajesh_bt@kluniversity.in 
         
         **G. Aruna Sesha Chandrika**  
-        📧 Email: bjmf@gmail.com  
+        📧 Email: chandrikagummadi1@gmail.com  
     """)
 else:
     # Main application
