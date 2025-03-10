@@ -23,7 +23,7 @@ if page == "Home":
 
 # ----------- UPLOAD & ANALYZE PAGE -----------
 elif page == "Upload & Analyze":
-    st.title("Upload and Analyze DNA Sequences")
+    st.title("Upload and Analyze NON-B DNA Sequences")
 
     uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
     pasted_sequence = st.text_area("Or paste your DNA sequence here:")
