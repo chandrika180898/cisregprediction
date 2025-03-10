@@ -12,7 +12,7 @@ st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
 
 if page == "Home":
-    st.title("Welcome to DNA Motif Analysis Tool")
+    st.title("Welcome to NON-B DNA Motif Analysis Tool")
     st.write("Upload or paste DNA sequences to analyze Non-B DNA motifs.")
 
 elif page == "Upload & Analyze":
