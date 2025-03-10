@@ -14,7 +14,7 @@ page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visual
 
 # ----------- HOME PAGE -----------
 if page == "Home":
-    st.title("Welcome to DNA Motif Analysis Tool")
+    st.title("Welcome to NON-B DNA Motif Analysis Tool")
     
     # Fixed: Corrected GitHub Image Path (using the raw URL)
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
