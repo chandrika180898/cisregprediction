@@ -14,6 +14,7 @@ page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visual
 if page == "Home":
     st.title("Welcome to NON-B DNA Motif Analysis Tool")
     st.write("Upload or paste DNA sequences to analyze Non-B DNA motifs.")
+    st.image("https://github.com/chandrika180898/cisregprediction/blob/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 
 elif page == "Upload & Analyze":
     st.title("Upload and Analyze DNA Sequences")
