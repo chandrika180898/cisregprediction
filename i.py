@@ -124,7 +124,18 @@ elif page == "Download Report":
 
 elif page == "About":
     st.title("About DNA Motif Analysis")
-    st.write("This tool identifies Non-B DNA motifs in sequences.")
+    st.write("""
+- **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
+- **Direct repeats (DRs):** Consist of repeated 4- to 10-nucleotide sequences within a genome.
+- **G-quadruplexes (G4s):** Four-stranded DNA structures stabilized by Hoogsteen hydrogen bonds and cations.
+- **Inverted repeats (IRs):** Formed when inter-strand base pairing shifts to intra-strand pairing, leading to cruciform DNA.
+- **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
+- **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
+- **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
+- **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
+- **A-form DNA:** Inverted G/C tracts exhibiting A-like base stacking, recognized by transcription factors.
+- **Parallel-stranded DNA:** Purine-rich sequences stabilized by reverse Hoogsteen hydrogen bonding, forming triplexes or quadruplexes.
+""")
 
 elif page == "Contact":
     st.title("Contact")
