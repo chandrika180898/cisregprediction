@@ -8,19 +8,27 @@ from concurrent.futures import ProcessPoolExecutor
 from reportlab.pdfgen import canvas
 from Bio.Seq import Seq
 
+# Sidebar Navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
 
+# ----------- HOME PAGE -----------
 if page == "Home":
-    st.title("Welcome to NON-B DNA Motif Analysis Tool")
-    st.write("Upload or paste DNA sequences to analyze Non-B DNA motifs.")
-    st.image("https://github.com/chandrika180898/cisregprediction/blob/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
+    st.title("Welcome to DNA Motif Analysis Tool")
+    
+    # Fixed: Corrected GitHub Image Path (using the raw URL)
+    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 
+    st.write("Upload or paste DNA sequences to analyze Non-B DNA motifs.")
+
+# ----------- UPLOAD & ANALYZE PAGE -----------
 elif page == "Upload & Analyze":
     st.title("Upload and Analyze DNA Sequences")
+
     uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
     pasted_sequence = st.text_area("Or paste your DNA sequence here:")
-    
+
+    # Define Motif Patterns
     motifs = {
         "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
         "Z-DNA": re.compile(r'(CG){6,}'),
@@ -62,11 +70,12 @@ elif page == "Upload & Analyze":
         results_df = process_uploaded_files(uploaded_files)
     elif pasted_sequence:
         results_df = pd.DataFrame(find_motifs(pasted_sequence))
-    
+
     if not results_df.empty:
         st.session_state["results_df"] = results_df
         st.success("Analysis completed! Go to 'Results' or 'Visualization'.")
 
+# ----------- RESULTS PAGE -----------
 elif page == "Results":
     st.title("Analysis Results")
     if "results_df" in st.session_state:
@@ -74,6 +83,7 @@ elif page == "Results":
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
 
+# ----------- VISUALIZATION PAGE -----------
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
     if "results_df" in st.session_state:
@@ -99,11 +109,12 @@ elif page == "Visualization":
     else:
         st.warning("No data available for visualization.")
 
+# ----------- DOWNLOAD REPORT PAGE -----------
 elif page == "Download Report":
     st.title("Download Report")
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
-        
+
         def generate_pdf(df):
             c = canvas.Canvas("motif_report.pdf")
             c.drawString(100, 800, "DNA Motif Analysis Report")
@@ -123,21 +134,12 @@ elif page == "Download Report":
     else:
         st.warning("No data available for download.")
 
+# ----------- ABOUT PAGE -----------
 elif page == "About":
     st.title("About DNA Motif Analysis")
-    st.write("""
-- **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
-- **Direct repeats (DRs):** Consist of repeated 4- to 10-nucleotide sequences within a genome.
-- **G-quadruplexes (G4s):** Four-stranded DNA structures stabilized by Hoogsteen hydrogen bonds and cations.
-- **Inverted repeats (IRs):** Formed when inter-strand base pairing shifts to intra-strand pairing, leading to cruciform DNA.
-- **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
-- **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
-- **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
-- **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
-- **A-form DNA:** Inverted G/C tracts exhibiting A-like base stacking, recognized by transcription factors.
-- **Parallel-stranded DNA:** Purine-rich sequences stabilized by reverse Hoogsteen hydrogen bonding, forming triplexes or quadruplexes.
-""")
+    st.write("This tool identifies Non-B DNA motifs in sequences.")
 
+# ----------- CONTACT PAGE -----------
 elif page == "Contact":
     st.title("Contact")
     st.write("Dr. Y V Rajesh: yvrajesh_bt@kluniversity.in")
