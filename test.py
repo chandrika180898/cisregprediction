@@ -1,153 +1,149 @@
-import streamlit as st 
+import streamlit as st
 import pandas as pd
+import plotly.express as px
 from Bio import SeqIO
 from io import StringIO
 import re
-import plotly.express as px
 from concurrent.futures import ProcessPoolExecutor
 from reportlab.pdfgen import canvas
 from Bio.Seq import Seq
 
-execution_metadata = {
-    "execution_count": None,
-    "status": "running",
-    "error": None
-}
+# Apply Pastel Theme
+st.markdown(
+    """
+    <style>
+        body {
+            background-color: #F8E8EE;
+            color: #5D5A6F;
+        }
+        .sidebar .sidebar-content {
+            background-color: #FCE8D5;
+        }
+        .stButton>button {
+            background-color: #A7D7C5;
+            color: #5D5A6F;
+            border-radius: 10px;
+        }
+        .stDataFrame, .stTable {
+            background-color: #FAF3DD;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')
-st.image('https://github.com/chandrika180898/cisregprediction/blob/main/images/utr%20image.jpg', caption='DNA Structure')
+# Sidebar Navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
 
-st.write("## About Motifs")
-st.write("""
-- **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
-- **Direct repeats (DRs):** Consist of repeated 4- to 10-nucleotide sequences within a genome.
-- **G-quadruplexes (G4s):** Four-stranded DNA structures stabilized by Hoogsteen hydrogen bonds and cations.
-- **Inverted repeats (IRs):** Formed when inter-strand base pairing shifts to intra-strand pairing, leading to cruciform DNA.
-- **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
-- **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
-- **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
-- **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
-- **A-form DNA:** Inverted G/C tracts exhibiting A-like base stacking, recognized by transcription factors.
-- **Parallel-stranded DNA:** Purine-rich sequences stabilized by reverse Hoogsteen hydrogen bonding, forming triplexes or quadruplexes.
-""")
+# ----------- HOME PAGE -----------
+if page == "Home":
+    st.title("Welcome to DNA Motif Analysis Tool")
+    
+    # Fixed: Corrected GitHub Image Path (using the raw URL)
+    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 
-st.write('Upload multiple FASTA files to analyze DNA motifs, predict promoter regions, and visualize results.')
+    st.write("Upload or paste DNA sequences to analyze Non-B DNA motifs.")
 
-uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
+# ----------- UPLOAD & ANALYZE PAGE -----------
+elif page == "Upload & Analyze":
+    st.title("Upload and Analyze DNA Sequences")
 
-# Updated motifs dictionary to include H-DNA and R-Loop motifs
-motifs = {
-    "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
-    "Z-DNA": re.compile(r'(CG){6,}'),
-    "Short Tandem Repeat": re.compile(r'([ATGC]{2,6})\1{2,}'),
-    "I-Motif": re.compile(r'((C[A,T]C){3,})'),
-    "R-Loop": re.compile(r'(A{4,}[CG]{2,}A{4,})'),
-    "Cruciform": re.compile(r'([ATGC]{4,})\1{2,}'),
-    "G-Quadruplex": re.compile(r'(G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,})'),
-    "Hairpin": re.compile(r'([ATGC]{4,})\1{1,}'),
-    "Triplex": re.compile(r'(A{3,}[ATGC]{1,}A{3,})'),
-    "H-DNA": re.compile(r'([AG]{4,}[CT]{4,}[AG]{4,})'),
-    "Triplex-forming oligonucleotide (TFO)": re.compile(r'([GATC]{6,}[AG]{4,}[CT]{4,})')
-}
+    uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
+    pasted_sequence = st.text_area("Or paste your DNA sequence here:")
 
-# Function to find inverted repeats
-def find_inverted_repeats(sequence):
-    inverted_repeat_results = []
-    pattern = r'([ATGC]{3,})[ATGC]{0,10}([ATGC]{3,})'
-    for match in re.finditer(pattern, str(sequence)):
-        part1 = match.group(1)
-        part2 = match.group(2)[::-1]
-        if part1 == part2:
-            inverted_repeat_results.append({
-                "Motif": "Inverted Repeat",
-                "Start": match.start() + 1,
-                "End": match.end(),
-                "Matched Sequence": sequence[match.start():match.end()]
-            })
-    return inverted_repeat_results
+    # Define Motif Patterns
+    motifs = {
+        "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
+        "Z-DNA": re.compile(r'(CG){6,}'),
+        "Short Tandem Repeat": re.compile(r'([ATGC]{2,6})\1{2,}'),
+        "I-Motif": re.compile(r'((C[A,T]C){3,})'),
+        "R-Loop": re.compile(r'(A{4,}[CG]{2,}A{4,})'),
+        "Cruciform": re.compile(r'([ATGC]{4,})\1{2,}'),
+        "G-Quadruplex": re.compile(r'(G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,})'),
+        "Hairpin": re.compile(r'([ATGC]{4,})\1{1,}'),
+        "Triplex": re.compile(r'(A{3,}[ATGC]{1,}A{3,})'),
+        "H-DNA": re.compile(r'([AG]{4,}[CT]{4,}[AG]{4,})'),
+        "Triplex-forming oligonucleotide (TFO)": re.compile(r'([GATC]{6,}[AG]{4,}[CT]{4,})')
+    }
 
-# Function to find motifs
-def find_motifs(sequence):
-    results = []
-    for motif_name, motif_pattern in motifs.items():
-        for match in motif_pattern.finditer(str(sequence)):
-            results.append({
-                "Motif": motif_name,
-                "Start": match.start() + 1,
-                "End": match.end(),
-                "Matched Sequence": sequence[match.start():match.end()]
-            })
-    results.extend(find_inverted_repeats(sequence))
-    return results
-
-# Parallel sequence analysis
-def analyze_sequences_parallel(sequences):
-    data = []
-    with ProcessPoolExecutor() as executor:
-        results = list(executor.map(find_motifs, [record.seq for record in sequences]))
-        for record, motif_results in zip(sequences, results):
-            for motif in motif_results:
-                data.append({
-                    "Sequence ID": record.id,
-                    **motif,
-                    "Length": len(record.seq)
+    def find_motifs(sequence, seq_id="Pasted Sequence"):
+        results = []
+        for motif_name, motif_pattern in motifs.items():
+            for match in motif_pattern.finditer(str(sequence)):
+                results.append({
+                    "Sequence ID": seq_id,
+                    "Motif": motif_name,
+                    "Start": match.start() + 1,
+                    "End": match.end(),
+                    "Matched Sequence": match.group()
                 })
-    return pd.DataFrame(data)
+        return results
 
-# Visualization
-def visualize_motifs(df):
-    fig = px.scatter(df, x='Start', y='Sequence ID', color='Motif',
-                     hover_data=['Matched Sequence'],
-                     title="Motif Distribution Across Sequences")
-    st.plotly_chart(fig)
+    def process_uploaded_files(uploaded_files):
+        all_results = []
+        for uploaded_file in uploaded_files:
+            fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
+            for record in fasta_sequences:
+                all_results.extend(find_motifs(record.seq, record.id))
+        return pd.DataFrame(all_results)
 
-# PDF generation
-def generate_pdf(df):
-    c = canvas.Canvas("motif_report.pdf")
-    c.drawString(100, 800, "DNA Motif Analysis Report")
-    y = 780
-    for i, row in df.iterrows():
-        c.drawString(100, y, f"{row['Sequence ID']} | {row['Motif']} | Start: {row['Start']} | End: {row['End']}")
-        y -= 20
-    c.save()
+    results_df = pd.DataFrame()
 
-# Process uploaded files
-def process_uploaded_files(uploaded_files):
-    all_results = pd.DataFrame()
-    for uploaded_file in uploaded_files:
-        fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
-        results_df = analyze_sequences_parallel(fasta_sequences)
-        all_results = pd.concat([all_results, results_df], ignore_index=True)
-    return all_results
-
-if uploaded_files:
-    try:
+    if uploaded_files:
         results_df = process_uploaded_files(uploaded_files)
-        
-        if 'Matched Sequence' in results_df.columns:
-            results_df['Matched Sequence'] = results_df['Matched Sequence'].apply(lambda x: str(x) if isinstance(x, Seq) else x)
-        else:
-            st.error("No motifs found or the 'Matched Sequence' column is missing!")
+    elif pasted_sequence:
+        results_df = pd.DataFrame(find_motifs(pasted_sequence))
 
-        st.write("### Motif Analysis Results")
-        st.dataframe(results_df)
-        visualize_motifs(results_df)
-        
-        if st.button("Generate PDF Report"):
-            generate_pdf(results_df)
-            with open("motif_report.pdf", "rb") as pdf:
-                st.download_button(
-                    "Download PDF Report", pdf, file_name="motif_analysis_report.pdf")
+    if not results_df.empty:
+        st.session_state["results_df"] = results_df
+        st.success("Analysis completed! Go to 'Results' or 'Visualization'.")
 
-        csv = results_df.to_csv(index=False)
-        st.download_button(
-            label="Download CSV",
-            data=csv,
-            file_name="motif_analysis_results.csv",
-            mime="text/csv"
-        )
-        execution_metadata["status"] = "completed"
-    except Exception as e:
-        execution_metadata["status"] = "error"
-        execution_metadata["error"] = str(e)
-        st.error(f"An error occurred: {e}")
+# ----------- RESULTS PAGE -----------
+elif page == "Results":
+    st.title("Analysis Results")
+    if "results_df" in st.session_state:
+        st.dataframe(st.session_state["results_df"])
+    else:
+        st.warning("No results available. Please upload or paste a sequence first.")
+
+# ----------- VISUALIZATION PAGE -----------
+elif page == "Visualization":
+    st.title("Visualization of Motif Analysis")
+    if "results_df" in st.session_state:
+        results_df = st.session_state["results_df"]
+
+        motif_counts = results_df["Motif"].value_counts().reset_index()
+        motif_counts.columns = ["Motif", "Count"]
+        
+        # Bar Chart
+        st.subheader("Motif Frequency Bar Chart")
+        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
+        st.plotly_chart(fig_bar)
+        
+        # Pie Chart
+        st.subheader("Motif Distribution Pie Chart")
+        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
+        st.plotly_chart(fig_pie)
+    else:
+        st.warning("No data available for visualization.")
+
+# ----------- ABOUT PAGE -----------
+elif page == "About":
+    st.title("About DNA Motif Analysis")
+    st.write("""
+    - **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
+    - **Direct repeats (DRs):** Consist of repeated 4- to 10-nucleotide sequences within a genome.
+    - **G-quadruplexes (G4s):** Four-stranded DNA structures stabilized by Hoogsteen hydrogen bonds and cations.
+    - **Inverted repeats (IRs):** Formed when inter-strand base pairing shifts to intra-strand pairing, leading to cruciform DNA.
+    - **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
+    - **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
+    - **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
+    - **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
+    """)
+
+# ----------- CONTACT PAGE -----------
+elif page == "Contact":
+    st.title("Contact")
+    st.write("Dr. Y V Rajesh: yvrajesh_bt@kluniversity.in")
+    st.write("G. Aruna Sesha Chandrika: chandrikagummadi1@gmail.com")
