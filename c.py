@@ -8,9 +8,11 @@ from concurrent.futures import ProcessPoolExecutor
 from reportlab.pdfgen import canvas
 from Bio.Seq import Seq
 
+# Sidebar Navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Download Report", "About", "Contact"])
 
+# About Page
 if page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
@@ -27,9 +29,10 @@ if page == "About":
         - **H-DNA**
         - **Triplex-forming oligonucleotide (TFO)**
         
-        Upload a FASTA file and get detailed motif predictions!
+        Upload a FASTA file or paste a sequence and get detailed motif predictions!
     """)
 
+# Contact Page
 elif page == "Contact":
     st.title("Contact")
     st.write("""
@@ -40,10 +43,12 @@ elif page == "Contact":
         📧 Email: chandrikagummadi1@gmail.com  
     """)
 
-
+# Upload & Analyze Page
+elif page == "Upload & Analyze":
     st.title('Upload and Analyze DNA Sequences')
     uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
-
+    pasted_sequence = st.text_area("Or Paste a DNA Sequence Here:")
+    
     motifs = {
         "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
         "Z-DNA": re.compile(r'(CG){6,}'),
@@ -57,22 +62,7 @@ elif page == "Contact":
         "H-DNA": re.compile(r'([AG]{4,}[CT]{4,}[AG]{4,})'),
         "Triplex-forming oligonucleotide (TFO)": re.compile(r'([GATC]{6,}[AG]{4,}[CT]{4,})')
     }
-
-    def find_inverted_repeats(sequence):
-        inverted_repeat_results = []
-        pattern = r'([ATGC]{3,})[ATGC]{0,10}([ATGC]{3,})'
-        for match in re.finditer(pattern, str(sequence)):
-            part1 = match.group(1)
-            part2 = match.group(2)[::-1]
-            if part1 == part2:
-                inverted_repeat_results.append({
-                    "Motif": "Inverted Repeat",
-                    "Start": match.start() + 1,
-                    "End": match.end(),
-                    "Matched Sequence": str(sequence[match.start():match.end()])
-                })
-        return inverted_repeat_results
-
+    
     def find_motifs(sequence):
         results = []
         for motif_name, motif_pattern in motifs.items():
@@ -83,9 +73,8 @@ elif page == "Contact":
                     "End": match.end(),
                     "Matched Sequence": str(sequence[match.start():match.end()])
                 })
-        results.extend(find_inverted_repeats(sequence))
         return results
-
+    
     def analyze_sequences_parallel(sequences):
         data = []
         with ProcessPoolExecutor() as executor:
@@ -98,7 +87,7 @@ elif page == "Contact":
                         "Length": len(record.seq)
                     })
         return pd.DataFrame(data)
-
+    
     def process_uploaded_files(uploaded_files):
         all_results = pd.DataFrame()
         for uploaded_file in uploaded_files:
@@ -106,49 +95,44 @@ elif page == "Contact":
             results_df = analyze_sequences_parallel(fasta_sequences)
             all_results = pd.concat([all_results, results_df], ignore_index=True)
         return all_results
-
-    if uploaded_files:
+    
+    def process_pasted_sequence(sequence):
+        fake_fasta_record = [SeqIO.SeqRecord(Seq(sequence), id="Pasted_Sequence", description="Pasted Sequence Analysis")]
+        return analyze_sequences_parallel(fake_fasta_record)
+    
+    if uploaded_files or pasted_sequence:
         try:
-            results_df = process_uploaded_files(uploaded_files)
-
+            results_df = pd.DataFrame()
+            if uploaded_files:
+                results_df = process_uploaded_files(uploaded_files)
+            if pasted_sequence:
+                results_df = pd.concat([results_df, process_pasted_sequence(pasted_sequence)], ignore_index=True)
+            
             if 'Matched Sequence' in results_df.columns:
-                results_df['Matched Sequence'] = results_df['Matched Sequence'].apply(lambda x: str(x) if isinstance(x, Seq) else x)
+                results_df['Matched Sequence'] = results_df['Matched Sequence'].astype(str)
             else:
                 st.error("No motifs found or the 'Matched Sequence' column is missing!")
-
+            
             st.session_state["results_df"] = results_df
             st.success("Analysis completed! Go to 'Results' to view.")
-
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
+# Results Page
 elif page == "Results":
     st.title("Analysis Results")
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
         st.dataframe(results_df)
     else:
-        st.warning("No results available. Please upload and analyze sequences first.")
+        st.warning("No results available. Please upload or paste sequences first.")
 
+# Download Report Page
 elif page == "Download Report":
     st.title("Download Report")
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
-
-        def generate_pdf(df):
-            c = canvas.Canvas("motif_report.pdf")
-            c.drawString(100, 800, "DNA Motif Analysis Report")
-            y = 780
-            for i, row in df.iterrows():
-                c.drawString(100, y, f"{row['Sequence ID']} | {row['Motif']} | Start: {row['Start']} | End: {row['End']}")
-                y -= 20
-            c.save()
-
-        if st.button("Generate PDF Report"):
-            generate_pdf(results_df)
-            with open("motif_report.pdf", "rb") as pdf:
-                st.download_button("Download PDF Report", pdf, file_name="motif_analysis_report.pdf")
-
+        
         csv = results_df.to_csv(index=False)
         st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
     else:
