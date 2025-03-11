@@ -129,10 +129,11 @@ elif page == "Results":
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
         st.dataframe(results_df)
-         motif_occurrence = results_df["Motif"].value_counts().reset_index()
+        motif_occurrence = results_df["Motif"].value_counts().reset_index()
         motif_occurrence.columns = ["Motif", "Total Count"]
         st.subheader("Motif Occurrence Summary")
         st.dataframe(motif_occurrence)
+   
     else:
         st.warning("No results available. Please upload or paste sequences first.")
 elif page == "Visualization":
