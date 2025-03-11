@@ -8,37 +8,13 @@ from concurrent.futures import ProcessPoolExecutor
 from reportlab.pdfgen import canvas
 from Bio.Seq import Seq
 
-# Apply Pastel Theme
-st.markdown(
-    """
-    <style>
-        body {
-            background-color: #F8E8EE;
-            color: #5D5A6F;
-        }
-        .sidebar .sidebar-content {
-            background-color: #FCE8D5;
-        }
-        .stButton>button {
-            background-color: #A7D7C5;
-            color: #5D5A6F;
-            border-radius: 10px;
-        }
-        .stDataFrame, .stTable {
-            background-color: #FAF3DD;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
 # Sidebar Navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
 
 # ----------- HOME PAGE -----------
 if page == "Home":
-    st.title("Welcome to DNA Motif Analysis Tool")
+    st.title("Welcome to NON-B DNA Motif Analysis Tool")
     
     # Fixed: Corrected GitHub Image Path (using the raw URL)
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
@@ -47,7 +23,7 @@ if page == "Home":
 
 # ----------- UPLOAD & ANALYZE PAGE -----------
 elif page == "Upload & Analyze":
-    st.title("Upload and Analyze DNA Sequences")
+    st.title("Upload and Analyze NON-B DNA Sequences")
 
     uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
     pasted_sequence = st.text_area("Or paste your DNA sequence here:")
@@ -60,11 +36,15 @@ elif page == "Upload & Analyze":
         "I-Motif": re.compile(r'((C[A,T]C){3,})'),
         "R-Loop": re.compile(r'(A{4,}[CG]{2,}A{4,})'),
         "Cruciform": re.compile(r'([ATGC]{4,})\1{2,}'),
-        "G-Quadruplex": re.compile(r'(G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,})'),
+        "G-Quadruplex": re.compile(r'(G{3,7})([ATCG]{1,7})(G{3,7})\1{2,}'),
+        "Bipartite G-Quadruplex": re.compile(r'(G{3}N{1,3}G{3}N{1,3}G{3})N{1,7}(G{3}N{1,3}G{3}N{1,3}G{3})'),
+        "G-Triplex DNA (G3-DNA)": re.compile(r'(G{3}N{1,7}){2}G{3}'),
+        "G-Hairpin": re.compile(r'(G{3,})N{1,7}(G{3,})'),
+        "G-Guanine Slip-Strand DNA": re.compile(r'(GGG){3,}'),
         "Hairpin": re.compile(r'([ATGC]{4,})\1{1,}'),
         "Triplex": re.compile(r'(A{3,}[ATGC]{1,}A{3,})'),
         "H-DNA": re.compile(r'([AG]{4,}[CT]{4,}[AG]{4,})'),
-        "Triplex-forming oligonucleotide (TFO)": re.compile(r'([GATC]{6,}[AG]{4,}[CT]{4,})')
+       
     }
 
     def find_motifs(sequence, seq_id="Pasted Sequence"):
@@ -98,52 +78,3 @@ elif page == "Upload & Analyze":
     if not results_df.empty:
         st.session_state["results_df"] = results_df
         st.success("Analysis completed! Go to 'Results' or 'Visualization'.")
-
-# ----------- RESULTS PAGE -----------
-elif page == "Results":
-    st.title("Analysis Results")
-    if "results_df" in st.session_state:
-        st.dataframe(st.session_state["results_df"])
-    else:
-        st.warning("No results available. Please upload or paste a sequence first.")
-
-# ----------- VISUALIZATION PAGE -----------
-elif page == "Visualization":
-    st.title("Visualization of Motif Analysis")
-    if "results_df" in st.session_state:
-        results_df = st.session_state["results_df"]
-
-        motif_counts = results_df["Motif"].value_counts().reset_index()
-        motif_counts.columns = ["Motif", "Count"]
-        
-        # Bar Chart
-        st.subheader("Motif Frequency Bar Chart")
-        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
-        st.plotly_chart(fig_bar)
-        
-        # Pie Chart
-        st.subheader("Motif Distribution Pie Chart")
-        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
-        st.plotly_chart(fig_pie)
-    else:
-        st.warning("No data available for visualization.")
-
-# ----------- ABOUT PAGE -----------
-elif page == "About":
-    st.title("About DNA Motif Analysis")
-    st.write("""
-    - **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
-    - **Direct repeats (DRs):** Consist of repeated 4- to 10-nucleotide sequences within a genome.
-    - **G-quadruplexes (G4s):** Four-stranded DNA structures stabilized by Hoogsteen hydrogen bonds and cations.
-    - **Inverted repeats (IRs):** Formed when inter-strand base pairing shifts to intra-strand pairing, leading to cruciform DNA.
-    - **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
-    - **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
-    - **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
-    - **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
-    """)
-
-# ----------- CONTACT PAGE -----------
-elif page == "Contact":
-    st.title("Contact")
-    st.write("Dr. Y V Rajesh: yvrajesh_bt@kluniversity.in")
-    st.write("G. Aruna Sesha Chandrika: chandrikagummadi1@gmail.com")
