@@ -32,7 +32,7 @@ elif page == "Upload & Analyze":
     motifs = {
         "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
         "Z-DNA": re.compile(r'(CG){6,}'),
-        "Short Tandem Repeat": re.compile(r'([ATGC]{2,6})\1{2,}'),
+       
         "I-Motif": re.compile(r'((C[A,T]C){3,})'),
         "R-Loop": re.compile(r'(A{4,}[CG]{2,}A{4,})'),
         "Cruciform": re.compile(r'([ATGC]{4,})\1{2,}'),
@@ -80,6 +80,12 @@ elif page == "Results":
     st.title("Analysis Results")
     if "results_df" in st.session_state:
         st.dataframe(st.session_state["results_df"])
+    else:
+        st.warning("No results available. Please upload or paste a sequence first.")
+        motif_occurrence = results_df["Motif"].value_counts().reset_index()
+        motif_occurrence.columns = ["Motif", "Total Count"]
+        st.subheader("Motif Occurrence Summary")
+        st.dataframe(motif_occurrence)
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
 
