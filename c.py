@@ -22,7 +22,7 @@ if page == "Home":
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 # About Page
 
-   elif page == "About":
+elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
     - **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
