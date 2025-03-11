@@ -131,8 +131,10 @@ elif page == "About":
     - **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
     - **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
     - **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
+    - **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
+    - **A-form DNA:** Inverted G/C tracts exhibiting A-like base stacking, recognized by transcription factors.
+    - **Parallel-stranded DNA:** Purine-rich sequences stabilized by reverse Hoogsteen hydrogen bonding, forming triplexes or quadruplexes.
     """)
-
 # ----------- CONTACT PAGE -----------
 elif page == "Contact":
     st.title("Contact")
