@@ -1,138 +1,139 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "1d30a0c1-0aad-40ed-b524-b5b12a5bbe16",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import streamlit as st\n",
-    "import pandas as pd\n",
-    "from Bio import SeqIO\n",
-    "from io import StringIO\n",
-    "import re\n",
-    "import plotly.express as px\n",
-    "from Bio.Seq import Seq\n",
-    "\n",
-    "# Title and description\n",
-    "st.title('Advanced DNA Promoter Prediction and Non-B DNA Motif Analysis')\n",
-    "st.write('Upload multiple FASTA files to analyze DNA motifs, predict promoter regions, and visualize results.')\n",
-    "\n",
-    "# Displaying image on the right side\n",
-    "st.markdown(\n",
-    "    \"\"\"\n",
-    "    <div style=\"display: flex; justify-content: flex-end; align-items: center;\">\n",
-    "        <img src=\"images/k.png\" alt=\"Advanced DNA Analysis\" style=\"width: 300px; height: auto; border-radius: 10px;\">\n",
-    "    </div>\n",
-    "    \"\"\",\n",
-    "    unsafe_allow_html=True\n",
-    ")\n",
-    "\n",
-    "# Uploading files\n",
-    "uploaded_files = st.file_uploader(\"Upload FASTA Files\", type=['fasta'], accept_multiple_files=True)\n",
-    "\n",
-    "# Dictionary of motifs\n",
-    "motifs = {\n",
-    "    \"Slipped DNA\": re.compile(r'([ATGC]{2,6})\\1{1,}'),\n",
-    "    \"Z-DNA\": re.compile(r'(CG){6,}'),\n",
-    "    \"Short Tandem Repeat\": re.compile(r'([ATGC]{2,6})\\1{2,}'),\n",
-    "    \"I-Motif\": re.compile(r'((C[A,T]C){3,})'),\n",
-    "    \"R-Loop\": re.compile(r'(A{4,}[CG]{2,}A{4,})'),\n",
-    "    \"Cruciform\": re.compile(r'([ATGC]{4,})\\1{2,}'),\n",
-    "    \"G-Quadruplex\": re.compile(r'(G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,}[ATGC]{1,5}G{3,})'),\n",
-    "    \"Hairpin\": re.compile(r'([ATGC]{4,})\\1{1,}'),\n",
-    "    \"Triplex\": re.compile(r'(A{3,}[ATGC]{1,}A{3,})'),\n",
-    "    \"H-DNA\": re.compile(r'([AG]{4,}[CT]{4,}[AG]{4,})'),\n",
-    "    \"Triplex-forming oligonucleotide (TFO)\": re.compile(r'([GATC]{6,}[AG]{4,}[CT]{4,})')\n",
-    "}\n",
-    "\n",
-    "# Function to find inverted repeats\n",
-    "def find_inverted_repeats(sequence):\n",
-    "    inverted_repeat_results = []\n",
-    "    pattern = r'([ATGC]{3,})[ATGC]{0,10}([ATGC]{3,})'\n",
-    "    for match in re.finditer(pattern, str(sequence)):\n",
-    "        part1 = match.group(1)\n",
-    "        part2 = match.group(2)[::-1]  # Reverse complement\n",
-    "        if part1 == part2:\n",
-    "            inverted_repeat_results.append({\n",
-    "                \"Motif\": \"Inverted Repeat\",\n",
-    "                \"Start\": match.start() + 1,\n",
-    "                \"End\": match.end(),\n",
-    "                \"Matched Sequence\": sequence[match.start():match.end()]\n",
-    "            })\n",
-    "    return inverted_repeat_results\n",
-    "\n",
-    "# Main logic\n",
-    "if uploaded_files:\n",
-    "    results = []\n",
-    "    for uploaded_file in uploaded_files:\n",
-    "        fasta_content = uploaded_file.read().decode('utf-8')\n",
-    "        sequences = SeqIO.parse(StringIO(fasta_content), 'fasta')\n",
-    "        for record in sequences:\n",
-    "            sequence = str(record.seq)\n",
-    "            sequence_results = []\n",
-    "            # Analyze motifs\n",
-    "            for motif_name, motif_pattern in motifs.items():\n",
-    "                for match in re.finditer(motif_pattern, sequence):\n",
-    "                    sequence_results.append({\n",
-    "                        \"Motif\": motif_name,\n",
-    "                        \"Start\": match.start() + 1,\n",
-    "                        \"End\": match.end(),\n",
-    "                        \"Matched Sequence\": match.group()\n",
-    "                    })\n",
-    "            # Analyze inverted repeats\n",
-    "            sequence_results.extend(find_inverted_repeats(sequence))\n",
-    "            # Add results\n",
-    "            for result in sequence_results:\n",
-    "                result.update({\"Sequence ID\": record.id})\n",
-    "                results.append(result)\n",
-    "    \n",
-    "    # Create a DataFrame from results\n",
-    "    results_df = pd.DataFrame(results)\n",
-    "    st.write(\"Results Overview:\")\n",
-    "    st.dataframe(results_df)\n",
-    "\n",
-    "    # Visualization\n",
-    "    if not results_df.empty:\n",
-    "        motif_counts = results_df['Motif'].value_counts().reset_index()\n",
-    "        motif_counts.columns = ['Motif', 'Count']\n",
-    "        st.write(\"Motif Occurrence Visualization:\")\n",
-    "        fig = px.bar(motif_counts, x='Motif', y='Count', title='Motif Occurrence Count', labels={'Count': 'Number of Occurrences'})\n",
-    "        st.plotly_chart(fig)\n",
-    "\n",
-    "    # Download results\n",
-    "    csv = results_df.to_csv(index=False)\n",
-    "    st.download_button(\n",
-    "        label=\"Download Results as CSV\",\n",
-    "        data=csv,\n",
-    "        file_name=\"dna_motif_analysis_results.csv\",\n",
-    "        mime=\"text/csv\"\n",
-    "    )\n",
-    "else:\n",
-    "    st.info(\"Please upload FASTA files to proceed.\")\n"
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.11.7"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+from Bio import SeqIO
+from io import StringIO
+import re
+from concurrent.futures import ProcessPoolExecutor
+from reportlab.pdfgen import canvas
+from Bio.Seq import Seq
+
+# Sidebar Navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
+
+# ----------- HOME PAGE -----------
+if page == "Home":
+    st.title("Welcome to NON-B DNA Motif Analysis Tool")
+    
+    # Fixed: Corrected GitHub Image Path (using the raw URL)
+    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
+
+    st.write("Upload or paste DNA sequences to analyze Non-B DNA motifs.")
+
+# ----------- UPLOAD & ANALYZE PAGE -----------
+elif page == "Upload & Analyze":
+    st.title("Upload and Analyze NON-B DNA Sequences")
+
+    uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
+    pasted_sequence = st.text_area("Or paste your DNA sequence here:")
+
+    # Define Motif Patterns
+    motifs = {
+        "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
+        "Z-DNA": re.compile(r'(CG){6,}'),
+        "Short Tandem Repeat": re.compile(r'([ATGC]{2,6})\1{2,}'),
+        "I-Motif": re.compile(r'((C[A,T]C){3,})'),
+        "R-Loop": re.compile(r'(A{4,}[CG]{2,}A{4,})'),
+        "Cruciform": re.compile(r'([ATGC]{4,})\1{2,}'),
+        "G-Quadruplex": re.compile(r'(G{3,7})([ATCG]{1,7})(G{3,7})\1{2,}'),
+        "Bipartite G-Quadruplex": re.compile(r'(G{3}N{1,3}G{3}N{1,3}G{3})N{1,7}(G{3}N{1,3}G{3}N{1,3}G{3})'),
+        "G-Triplex DNA (G3-DNA)": re.compile(r'(G{3}N{1,7}){2}G{3}'),
+        "G-Hairpin": re.compile(r'(G{3,})N{1,7}(G{3,})'),
+        "G-Guanine Slip-Strand DNA": re.compile(r'(GGG){3,}')
+    }
+
+    def find_motifs(sequence, seq_id="Pasted Sequence"):
+        results = []
+        for motif_name, motif_pattern in motifs.items():
+            for match in motif_pattern.finditer(str(sequence)):
+                results.append({
+                    "Sequence ID": seq_id,
+                    "Motif": motif_name,
+                    "Start": match.start() + 1,
+                    "End": match.end(),
+                    "Matched Sequence": match.group()
+                })
+        return results
+
+    def process_uploaded_files(uploaded_files):
+        all_results = []
+        for uploaded_file in uploaded_files:
+            fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
+            for record in fasta_sequences:
+                all_results.extend(find_motifs(record.seq, record.id))
+        return pd.DataFrame(all_results)
+
+    results_df = pd.DataFrame()
+
+    if uploaded_files:
+        results_df = process_uploaded_files(uploaded_files)
+    elif pasted_sequence:
+        results_df = pd.DataFrame(find_motifs(pasted_sequence))
+
+    if not results_df.empty:
+        st.session_state["results_df"] = results_df
+        st.success("Analysis completed! Go to 'Results' or 'Visualization'.")
+
+# ----------- RESULTS PAGE -----------
+elif page == "Results":
+    st.title("Analysis Results")
+    if "results_df" in st.session_state:
+        results_df = st.session_state["results_df"]
+        st.dataframe(results_df)
+        
+        # Motif Occurrence Table
+        motif_occurrence = results_df["Motif"].value_counts().reset_index()
+        motif_occurrence.columns = ["Motif", "Total Count"]
+        st.subheader("Motif Occurrence Summary")
+        st.dataframe(motif_occurrence)
+    else:
+        st.warning("No results available. Please upload or paste a sequence first.")
+
+# ----------- VISUALIZATION PAGE -----------
+elif page == "Visualization":
+    st.title("Visualization of Motif Analysis")
+    if "results_df" in st.session_state:
+        results_df = st.session_state["results_df"]
+
+        motif_counts = results_df["Motif"].value_counts().reset_index()
+        motif_counts.columns = ["Motif", "Count"]
+        
+        # Bar Chart
+        st.subheader("Motif Frequency Bar Chart")
+        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
+        st.plotly_chart(fig_bar)
+        
+        # Pie Chart
+        st.subheader("Motif Distribution Pie Chart")
+        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
+        st.plotly_chart(fig_pie)
+        
+        # Scatter Plot
+        st.subheader("Motif Positions in Sequences")
+        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
+        st.plotly_chart(fig_scatter)
+    else:
+        st.warning("No data available for visualization.")
+
+# ----------- DOWNLOAD REPORT PAGE -----------
+elif page == "Download Report":
+    st.title("Download Report")
+    if "results_df" in st.session_state:
+        results_df = st.session_state["results_df"]
+        
+        csv = results_df.to_csv(index=False)
+        st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
+    else:
+        st.warning("No data available for download.")
+
+# ----------- ABOUT PAGE -----------
+elif page == "About":
+    st.title("About DNA Motif Analysis")
+    st.write("(Detailed description about motifs)")
+
+# ----------- CONTACT PAGE -----------
+elif page == "Contact":
+    st.title("Contact")
+    st.write("Dr. Y V Rajesh: yvrajesh_bt@kluniversity.in")
+    st.write("G. Aruna Sesha Chandrika: chandrikagummadi1@gmail.com")
