@@ -82,12 +82,6 @@ elif page == "Results":
         st.dataframe(st.session_state["results_df"])
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
-        motif_occurrence = results_df["Motif"].value_counts().reset_index()
-        motif_occurrence.columns = ["Motif", "Total Count"]
-        st.subheader("Motif Occurrence Summary")
-        st.dataframe(motif_occurrence)
-    else:
-        st.warning("No results available. Please upload or paste a sequence first.")
 
 # ----------- VISUALIZATION PAGE -----------
 elif page == "Visualization":
@@ -107,11 +101,6 @@ elif page == "Visualization":
         st.subheader("Motif Distribution Pie Chart")
         fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
         st.plotly_chart(fig_pie)
-        
-        # Scatter Plot
-        st.subheader("Motif Positions in Sequences")
-        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
-        st.plotly_chart(fig_scatter)
     else:
         st.warning("No data available for visualization.")
 
@@ -141,6 +130,7 @@ elif page == "About":
     - **A-form DNA:** Inverted G/C tracts exhibiting A-like base stacking, recognized by transcription factors.
     - **Parallel-stranded DNA:** Purine-rich sequences stabilized by reverse Hoogsteen hydrogen bonding, forming triplexes or quadruplexes.
     """)
+
 # ----------- CONTACT PAGE -----------
 elif page == "Contact":
     st.title("Contact")
