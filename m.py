@@ -4,8 +4,6 @@ import plotly.express as px
 from Bio import SeqIO
 from io import StringIO
 import re
-from concurrent.futures import ProcessPoolExecutor
-from reportlab.pdfgen import canvas
 from Bio.Seq import Seq
 
 # Sidebar Navigation
@@ -17,8 +15,8 @@ if page == "Home":
     st.title("Welcome to NON-B DNA Motif Analysis Tool")
     
     # Fixed: Corrected GitHub Image Path (using the raw URL)
-    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
-
+    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/k.png")
+    
     st.write("Upload or paste DNA sequences to analyze Non-B DNA motifs.")
 
 # ----------- UPLOAD & ANALYZE PAGE -----------
@@ -32,7 +30,6 @@ elif page == "Upload & Analyze":
     motifs = {
         "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
         "Z-DNA": re.compile(r'(CG){6,}'),
-       
         "I-Motif": re.compile(r'((C[A,T]C){3,})'),
         "R-Loop": re.compile(r'(A{4,}[CG]{2,}A{4,})'),
         "Cruciform": re.compile(r'([ATGC]{4,})\1{2,}'),
@@ -59,7 +56,7 @@ elif page == "Upload & Analyze":
     def process_uploaded_files(uploaded_files):
         all_results = []
         for uploaded_file in uploaded_files:
-            fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
+            fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.read().decode('utf-8')), 'fasta'))
             for record in fasta_sequences:
                 all_results.extend(find_motifs(record.seq, record.id))
         return pd.DataFrame(all_results)
@@ -69,7 +66,7 @@ elif page == "Upload & Analyze":
     if uploaded_files:
         results_df = process_uploaded_files(uploaded_files)
     elif pasted_sequence:
-        results_df = pd.DataFrame(find_motifs(pasted_sequence))
+        results_df = pd.DataFrame(find_motifs(Seq(pasted_sequence)))
 
     if not results_df.empty:
         st.session_state["results_df"] = results_df
@@ -78,7 +75,8 @@ elif page == "Upload & Analyze":
 # ----------- RESULTS PAGE -----------
 elif page == "Results":
     st.title("Analysis Results")
-    if "results_df" in st.session_state:
+    st.session_state.setdefault("results_df", None)
+    if st.session_state["results_df"] is not None:
         st.dataframe(st.session_state["results_df"])
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
@@ -86,7 +84,8 @@ elif page == "Results":
 # ----------- VISUALIZATION PAGE -----------
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
-    if "results_df" in st.session_state:
+    st.session_state.setdefault("results_df", None)
+    if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
 
         motif_counts = results_df["Motif"].value_counts().reset_index()
@@ -107,9 +106,9 @@ elif page == "Visualization":
 # ----------- DOWNLOAD REPORT PAGE -----------
 elif page == "Download Report":
     st.title("Download Report")
-    if "results_df" in st.session_state:
+    st.session_state.setdefault("results_df", None)
+    if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
-        
         csv = results_df.to_csv(index=False)
         st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
     else:
@@ -117,6 +116,8 @@ elif page == "Download Report":
 
 # ----------- ABOUT PAGE -----------
 elif page == "About":
+    st.title("About DNA Motif Analysis")
+   elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
     - **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
