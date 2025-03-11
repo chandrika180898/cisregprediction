@@ -83,8 +83,7 @@ elif page == "Visualization":
         if "Start" in results_df.columns and "Motif" in results_df.columns:
             fig_scatter = px.scatter(results_df, x="Start", y="Motif", color="Motif", title="Motif Positions in Sequences")
             st.plotly_chart(fig_scatter)
-        else:
-            st.warning("No positional data available for visualization.")
+       
     else:
         st.warning("No data available for visualization.")
 
