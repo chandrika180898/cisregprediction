@@ -21,8 +21,7 @@ if page == "Home":
     """)
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 # About Page
-elif page == "About":
-    st.title("About DNA Motif Analysis")
+
    elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
