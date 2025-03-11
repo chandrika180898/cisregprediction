@@ -14,8 +14,10 @@ page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visual
 
 # Home Page
 if page == "Home":
-   st.title(" NON-B DNA Motif Analysis Tool")
-    
+    st.title("Welcome to DNA Motif Analysis Tool")
+    st.write("""
+        This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
+    """)
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 
 # About Page
@@ -61,29 +63,34 @@ elif page == "Results":
 # Visualization Page
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
+    st.session_state.setdefault("results_df", None)
     
-    if "results_df" in st.session_state and st.session_state["results_df"] is not None:
+    if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
 
-        motif_counts = results_df["Motif"].value_counts().reset_index()
-        motif_counts.columns = ["Motif", "Count"]
-        
-        # Bar Chart
-        st.subheader("Motif Frequency Bar Chart")
-        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
-        st.plotly_chart(fig_bar)
-        
-        # Pie Chart
-        st.subheader("Motif Distribution Pie Chart")
-        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
-        st.plotly_chart(fig_pie)
+        if "Motif" in results_df.columns:
+            motif_counts = results_df["Motif"].value_counts().reset_index()
+            motif_counts.columns = ["Motif", "Count"]
+            
+            # Bar Chart
+            st.subheader("Motif Frequency Bar Chart")
+            fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
+            st.plotly_chart(fig_bar)
+            
+            # Pie Chart
+            st.subheader("Motif Distribution Pie Chart")
+            fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
+            st.plotly_chart(fig_pie)
 
-        # Scatter Plot - Motif Positions
-        st.subheader("Motif Positions in Sequences")
-        if "Start" in results_df.columns and "Motif" in results_df.columns:
-            fig_scatter = px.scatter(results_df, x="Start", y="Motif", color="Motif", title="Motif Positions in Sequences")
-            st.plotly_chart(fig_scatter)
-       
+            # Scatter Plot - Motif Positions
+            if "Start" in results_df.columns and "End" in results_df.columns:
+                st.subheader("Motif Positions in Sequences")
+                fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
+                st.plotly_chart(fig_scatter)
+            else:
+                st.warning("No positional data available for visualization.")
+        else:
+            st.warning("No data available for visualization.")
     else:
         st.warning("No data available for visualization.")
 
