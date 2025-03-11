@@ -19,7 +19,7 @@ if page == "Home":
         This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
         
     """)
-st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
+    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 # About Page
 elif page == "About":
     st.title("About DNA Motif Analysis")
