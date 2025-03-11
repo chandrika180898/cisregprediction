@@ -32,7 +32,7 @@ elif page == "Upload & Analyze":
     motifs = {
         "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
         "Z-DNA": re.compile(r'(CG){6,}'),
-        "Short Tandem Repeat": re.compile(r'([ATGC]{2,6})\1{2,}'),
+      
         "I-Motif": re.compile(r'((C[A,T]C){3,})'),
         "R-Loop": re.compile(r'(A{4,}[CG]{2,}A{4,})'),
         "Cruciform": re.compile(r'([ATGC]{4,})\1{2,}'),
