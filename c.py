@@ -125,14 +125,10 @@ elif page == "Upload & Analyze":
 # Results Page
 elif page == "Results":
     st.title("Analysis Results")
-    if "results_df" in st.session_state:
-        results_df = st.session_state["results_df"]
-        st.dataframe(results_df)
-        motif_occurrence = results_df["Motif"].value_counts().reset_index()
-        motif_occurrence.columns = ["Motif", "Total Count"]
-        st.subheader("Motif Occurrence Summary")
-        st.dataframe(motif_occurrence)
-   
+    if "results_df" in st.session_state and "count_df" in st.session_state:
+        st.dataframe(st.session_state["results_df"])
+        st.subheader("Non-B DNA Motif Occurrence Summary")
+        st.dataframe(st.session_state["count_df"]) 
     else:
         st.warning("No results available. Please upload or paste sequences first.")
 elif page == "Visualization":
