@@ -14,14 +14,11 @@ page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visual
 
 # Home Page
 if page == "Home":
-    st.title("Welcome to DNA Motif Analysis Tool")
-    st.write("""
-        This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
-        
-    """)
+   st.title(" NON-B DNA Motif Analysis Tool")
+    
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
-# About Page
 
+# About Page
 elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
@@ -61,10 +58,11 @@ elif page == "Results":
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
 
+# Visualization Page
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
-    st.session_state.setdefault("results_df", None)
-    if st.session_state["results_df"] is not None:
+    
+    if "results_df" in st.session_state and st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
 
         motif_counts = results_df["Motif"].value_counts().reset_index()
@@ -82,9 +80,9 @@ elif page == "Visualization":
 
         # Scatter Plot - Motif Positions
         st.subheader("Motif Positions in Sequences")
-        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
-        st.plotly_chart(fig_scatter)
-    else:
+        if "Start" in results_df.columns and "Motif" in results_df.columns:
+            fig_scatter = px.scatter(results_df, x="Start", y="Motif", color="Motif", title="Motif Positions in Sequences")
+            st.plotly_chart(fig_scatter)
         else:
             st.warning("No positional data available for visualization.")
     else:
