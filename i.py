@@ -60,37 +60,30 @@ elif page == "Results":
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
 
-# Visualization Page
-# Visualization Page
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
-
-    # Ensure session state has results_df
-    if "results_df" not in st.session_state or st.session_state["results_df"] is None:
-        st.warning("No data available for visualization.")
-    else:
+    if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
 
-        if not results_df.empty and "Motif" in results_df.columns:
-            motif_counts = results_df["Motif"].value_counts().reset_index()
-            motif_counts.columns = ["Motif", "Count"]
-            
-            st.subheader("Motif Frequency Bar Chart")
-            fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
-            st.plotly_chart(fig_bar)
-
-            st.subheader("Motif Distribution Pie Chart")
-            fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
-            st.plotly_chart(fig_pie)
-
-            if "Start" in results_df.columns and "End" in results_df.columns:
-                st.subheader("Motif Positions in Sequences")
-                fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
-                st.plotly_chart(fig_scatter)
-            else:
-                st.warning("No positional data available for visualization.")
-        else:
-            st.warning("No 'Motif' column found in data or the results are empty.")
+        motif_counts = results_df["Motif"].value_counts().reset_index()
+        motif_counts.columns = ["Motif", "Count"]
+        
+        # Bar Chart
+        st.subheader("Motif Frequency Bar Chart")
+        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
+        st.plotly_chart(fig_bar)
+        
+        # Pie Chart
+        st.subheader("Motif Distribution Pie Chart")
+        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
+        st.plotly_chart(fig_pie)
+        
+        # Scatter Plot
+        st.subheader("Motif Positions in Sequences")
+        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
+        st.plotly_chart(fig_scatter)
+    else:
+        st.warning("No data available for visualization.")
 
 
 # Download Report Page
