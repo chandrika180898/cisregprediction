@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 from Bio import SeqIO
 from io import StringIO
@@ -12,8 +12,16 @@ from Bio.Seq import Seq
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Download Report", "About", "Contact"])
 
+# Home Page
+if page == "Home":
+    st.title("Welcome to DNA Motif Analysis Tool")
+    st.write("""
+        This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
+         st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
+    """)
+
 # About Page
-if page == "About":
+elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
         This tool analyzes **Non-B DNA motifs** in DNA sequences, including:
@@ -132,7 +140,6 @@ elif page == "Download Report":
     st.title("Download Report")
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
-        
         csv = results_df.to_csv(index=False)
         st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
     else:
