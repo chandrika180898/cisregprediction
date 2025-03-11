@@ -81,18 +81,10 @@ elif page == "Visualization":
         st.plotly_chart(fig_pie)
 
         # Scatter Plot - Motif Positions
-        st.subheader("Motif Positions Across Sequences")
-        if "Start" in results_df.columns and "Motif" in results_df.columns:
-            fig_scatter = px.scatter(
-                results_df,
-                x="Start", 
-                y="Motif", 
-                color="Motif", 
-                title="Motif Positions Across Sequences",
-                labels={"Start": "Position in Sequence", "Motif": "Motif Type"},
-                hover_data=["Sequence ID", "Matched Sequence"]
-            )
-            st.plotly_chart(fig_scatter)
+        st.subheader("Motif Positions in Sequences")
+        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
+        st.plotly_chart(fig_scatter)
+    else:
         else:
             st.warning("No positional data available for visualization.")
     else:
