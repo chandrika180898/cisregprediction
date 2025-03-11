@@ -134,6 +134,26 @@ elif page == "Results":
         st.dataframe(results_df)
     else:
         st.warning("No results available. Please upload or paste sequences first.")
+elif page == "Visualization":
+    st.title("Visualization of Motif Analysis")
+    st.session_state.setdefault("results_df", None)
+    if st.session_state["results_df"] is not None:
+        results_df = st.session_state["results_df"]
+
+        motif_counts = results_df["Motif"].value_counts().reset_index()
+        motif_counts.columns = ["Motif", "Count"]
+        
+        # Bar Chart
+        st.subheader("Motif Frequency Bar Chart")
+        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
+        st.plotly_chart(fig_bar)
+        
+        # Pie Chart
+        st.subheader("Motif Distribution Pie Chart")
+        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
+        st.plotly_chart(fig_pie)
+    else:
+        st.warning("No data available for visualization.")
 
 # Download Report Page
 elif page == "Download Report":
