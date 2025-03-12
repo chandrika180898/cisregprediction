@@ -136,24 +136,54 @@ elif page == "Results":
         st.warning("No results available. Please upload or paste a sequence first.")
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
+    
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
         motif_counts = results_df["Motif"].value_counts().reset_index()
         motif_counts.columns = ["Motif", "Count"]
         
+        # Bar Chart
         st.subheader("Motif Frequency Bar Chart")
         fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
         st.plotly_chart(fig_bar)
         
+        # Pie Chart
         st.subheader("Motif Distribution Pie Chart")
         fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
         st.plotly_chart(fig_pie)
         
+        # Scatter Plot
         st.subheader("Motif Positions in Sequences")
         fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
         st.plotly_chart(fig_scatter)
+        
+        # Horizontal Thick Lines for Motif Positions
+        st.subheader("Motif Start and End Positions")
+        import plotly.graph_objects as go
+
+        fig_lines = go.Figure()
+
+        for _, row in results_df.iterrows():
+            fig_lines.add_trace(go.Scatter(
+                x=[row["Start"], row["End"]],
+                y=[row["Motif"], row["Motif"]],
+                mode="lines",
+                line=dict(width=6),  # Thick lines for clarity
+                name=row["Motif"]
+            ))
+
+        fig_lines.update_layout(
+            title="Motif Prediction Start and End Positions",
+            xaxis_title="Position in Sequence",
+            yaxis_title="Motif",
+            showlegend=False
+        )
+
+        st.plotly_chart(fig_lines)
+
     else:
         st.warning("No data available for visualization.")
+
 
 
 # Download Report Page
