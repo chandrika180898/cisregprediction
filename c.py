@@ -66,6 +66,8 @@ elif page == "Upload & Analyze":
         "G-Triplex DNA (G3-DNA)": re.compile(r'(G{3}N{1,7}){2}G{3}'),
         "G-Hairpin": re.compile(r'(G{3,})N{1,7}(G{3,})'),
         "G-Guanine Slip-Strand DNA": re.compile(r'(GGG){3,}')
+        "A-Tract": re.compile(r'(A{7,})'),
+
     }
     def find_motifs(sequence):
         results = []
