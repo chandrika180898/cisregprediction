@@ -30,17 +30,109 @@ elif page == "Upload & Analyze":
 
     # Define Motif Patterns
     motifs = {
-        "Slipped DNA": re.compile(r'([ATGC]{2,6})\1{1,}'),
-        "Z-DNA": re.compile(r'(CG){6,}'),
-      
-        "I-Motif": re.compile(r'((C[A,T]C){3,})'),
-        "R-Loop": re.compile(r'(A{4,}[CG]{2,}A{4,})'),
-        "Cruciform": re.compile(r'([ATGC]{4,})\1{2,}'),
-        "G-Quadruplex": re.compile(r'(G{3,7})([ATCG]{1,7})(G{3,7})\1{2,}'),
-        "Bipartite G-Quadruplex": re.compile(r'(G{3}N{1,3}G{3}N{1,3}G{3})N{1,7}(G{3}N{1,3}G{3}N{1,3}G{3})'),
-        "G-Triplex DNA (G3-DNA)": re.compile(r'(G{3}N{1,7}){2}G{3}'),
-        "G-Hairpin": re.compile(r'(G{3,})N{1,7}(G{3,})'),
-        "G-Guanine Slip-Strand DNA": re.compile(r'(GGG){3,}')
+       def get_a_tracts(dna, dna_rc, min_at, max_at):
+    total_bases = len(dna)
+    n_pat = 0
+    p_aprs = []
+    
+    i = 0
+    n_as = 0
+    
+    while i < total_bases:
+        if dna[i] in ('a', 't'):
+            n_as += 1
+        else:
+            if min_at <= n_as <= max_at:
+                strt = i - n_as + 1
+                at_end = strt + n_as
+                
+                max_at_len = max_t_len = 0
+                max_at_len_rc = max_t_len_rc = 0
+                max_at_end = max_at_end_rc = 0
+                
+                n_rc = total_bases - at_end
+                at_len = alen = tlen = talen = 0
+                at_len_rc = alen_rc = tlen_rc = talen_rc = 0
+                
+                for n in range(strt - 1, at_end - 1):
+                    n_rc += 1
+                    
+                    if dna[n] == 'a':
+                        tlen = talen = 0
+                        alen = 0 if dna[n - 1] == 't' else alen + 1
+                        at_len += 1
+                    if dna_rc[n_rc] == 'a':
+                        tlen_rc = talen_rc = 0
+                        alen_rc = 0 if dna_rc[n_rc - 1] == 't' else alen_rc + 1
+                        at_len_rc += 1
+                    
+                    if dna[n] == 't':
+                        if talen < alen:
+                            talen += 1
+                            at_len += 1
+                        else:
+                            tlen += 1
+                            talen = at_len = alen = 0
+                    if dna_rc[n_rc] == 't':
+                        if talen_rc < alen_rc:
+                            talen_rc += 1
+                            at_len_rc += 1
+                        else:
+                            tlen_rc += 1
+                            talen_rc = at_len_rc = alen_rc = 0
+                    
+                    if max_at_len < at_len:
+                        max_at_len = at_len
+                        max_at_end = n
+                    if max_t_len < tlen:
+                        max_t_len = tlen
+                    if max_at_len_rc < at_len_rc:
+                        max_at_len_rc = at_len_rc
+                        max_at_end_rc = n_rc
+                    if max_t_len_rc < tlen_rc:
+                        max_t_len_rc = tlen_rc
+                
+                if (max_at_len - max_t_len) >= min_at or (max_at_len_rc - max_t_len_rc) >= min_at:
+                    p_aprs.append({
+                        'start': strt,
+                        'end': strt + n_as,
+                        'a_center': ((max_at_end - ((max_at_len - 1) / 2)) + 1)
+                        if (max_at_len - max_t_len) >= (max_at_len_rc - max_t_len_rc)
+                        else total_bases - (max_at_end_rc - ((max_at_len_rc - 1) / 2))
+                    })
+                    n_pat += 1
+            n_as = 0
+        i += 1
+    
+    print(f"n potential a tracts = {n_pat}")
+    return p_aprs
+
+def find_apr(dna, dna_rc, min_apr, max_apr, min_atracts):
+    p_aprs = get_a_tracts(dna, dna_rc, min_apr, max_apr)
+    
+    n_processed_ats = len(p_aprs)
+    arep = []
+    
+    tracts = 1
+    ndx = 0
+    for i in range(n_processed_ats - (min_atracts + 1)):
+        dist_to_next = p_aprs[i + 1]['a_center'] - p_aprs[i]['a_center']
+        if 9.9 <= dist_to_next <= 11.1:
+            tracts += 1
+        else:
+            if tracts >= min_atracts:
+                arep.append({
+                    'start': p_aprs[i - tracts + 1]['start'],
+                    'loop': 0,
+                    'num': tracts,
+                    'strand': 0,
+                    'len': tracts,
+                    'end': p_aprs[i]['end'] - 1
+                })
+                ndx += 1
+            tracts = 1
+    return arep
+
     }
 
     def find_motifs(sequence, seq_id="Pasted Sequence"):
