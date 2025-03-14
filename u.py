@@ -15,29 +15,17 @@ page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visual
 # ----------- HOME PAGE -----------
 if page == "Home":
     st.title("Welcome to NON-B DNA Motif Analysis Tool")
-    
-    # Fixed: Corrected GitHub Image Path (using the raw URL)
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
-
     st.write("Upload or paste DNA sequences to analyze Non-B DNA motifs.")
 
-# ----------- UPLOAD & ANALYZE PAGE -----------
-elif page == "Upload & Analyze":
-    st.title("Upload and Analyze NON-B DNA Sequences")
-
-    uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
-    pasted_sequence = st.text_area("Or paste your DNA sequence here:")
-
-    # Define Motif Patterns
-    motifs = {
-       def get_a_tracts(dna, dna_rc, min_at, max_at):
+# Define A-phased repeat (APR) detection functions
+def get_a_tracts(dna, dna_rc, min_at, max_at):
     total_bases = len(dna)
     n_pat = 0
     p_aprs = []
-    
     i = 0
     n_as = 0
-    
+
     while i < total_bases:
         if dna[i] in ('a', 't'):
             n_as += 1
@@ -45,18 +33,15 @@ elif page == "Upload & Analyze":
             if min_at <= n_as <= max_at:
                 strt = i - n_as + 1
                 at_end = strt + n_as
-                
                 max_at_len = max_t_len = 0
                 max_at_len_rc = max_t_len_rc = 0
                 max_at_end = max_at_end_rc = 0
-                
                 n_rc = total_bases - at_end
                 at_len = alen = tlen = talen = 0
                 at_len_rc = alen_rc = tlen_rc = talen_rc = 0
-                
+
                 for n in range(strt - 1, at_end - 1):
                     n_rc += 1
-                    
                     if dna[n] == 'a':
                         tlen = talen = 0
                         alen = 0 if dna[n - 1] == 't' else alen + 1
@@ -65,7 +50,6 @@ elif page == "Upload & Analyze":
                         tlen_rc = talen_rc = 0
                         alen_rc = 0 if dna_rc[n_rc - 1] == 't' else alen_rc + 1
                         at_len_rc += 1
-                    
                     if dna[n] == 't':
                         if talen < alen:
                             talen += 1
@@ -80,7 +64,6 @@ elif page == "Upload & Analyze":
                         else:
                             tlen_rc += 1
                             talen_rc = at_len_rc = alen_rc = 0
-                    
                     if max_at_len < at_len:
                         max_at_len = at_len
                         max_at_end = n
@@ -91,28 +74,19 @@ elif page == "Upload & Analyze":
                         max_at_end_rc = n_rc
                     if max_t_len_rc < tlen_rc:
                         max_t_len_rc = tlen_rc
-                
                 if (max_at_len - max_t_len) >= min_at or (max_at_len_rc - max_t_len_rc) >= min_at:
-                    p_aprs.append({
-                        'start': strt,
-                        'end': strt + n_as,
-                        'a_center': ((max_at_end - ((max_at_len - 1) / 2)) + 1)
-                        if (max_at_len - max_t_len) >= (max_at_len_rc - max_t_len_rc)
-                        else total_bases - (max_at_end_rc - ((max_at_len_rc - 1) / 2))
-                    })
+                    p_aprs.append({'start': strt, 'end': strt + n_as, 'a_center': ((max_at_end - ((max_at_len - 1) / 2)) + 1)
+                                   if (max_at_len - max_t_len) >= (max_at_len_rc - max_t_len_rc)
+                                   else total_bases - (max_at_end_rc - ((max_at_len_rc - 1) / 2))})
                     n_pat += 1
             n_as = 0
         i += 1
-    
-    print(f"n potential a tracts = {n_pat}")
     return p_aprs
 
 def find_apr(dna, dna_rc, min_apr, max_apr, min_atracts):
     p_aprs = get_a_tracts(dna, dna_rc, min_apr, max_apr)
-    
     n_processed_ats = len(p_aprs)
     arep = []
-    
     tracts = 1
     ndx = 0
     for i in range(n_processed_ats - (min_atracts + 1)):
@@ -121,31 +95,26 @@ def find_apr(dna, dna_rc, min_apr, max_apr, min_atracts):
             tracts += 1
         else:
             if tracts >= min_atracts:
-                arep.append({
-                    'start': p_aprs[i - tracts + 1]['start'],
-                    'loop': 0,
-                    'num': tracts,
-                    'strand': 0,
-                    'len': tracts,
-                    'end': p_aprs[i]['end'] - 1
-                })
+                arep.append({'start': p_aprs[i - tracts + 1]['start'], 'loop': 0, 'num': tracts, 'strand': 0, 'len': tracts, 'end': p_aprs[i]['end'] - 1})
                 ndx += 1
             tracts = 1
     return arep
 
-    }
+# ----------- UPLOAD & ANALYZE PAGE -----------
+elif page == "Upload & Analyze":
+    st.title("Upload and Analyze NON-B DNA Sequences")
+    uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
+    pasted_sequence = st.text_area("Or paste your DNA sequence here:")
 
     def find_motifs(sequence, seq_id="Pasted Sequence"):
+        motifs = {  # Example motifs
+            "Direct Repeat": re.compile(r'(AT){2,}'),
+            "Inverted Repeat": re.compile(r'(GC.*?GC)')
+        }
         results = []
         for motif_name, motif_pattern in motifs.items():
             for match in motif_pattern.finditer(str(sequence)):
-                results.append({
-                    "Sequence ID": seq_id,
-                    "Motif": motif_name,
-                    "Start": match.start() + 1,
-                    "End": match.end(),
-                    "Matched Sequence": match.group()
-                })
+                results.append({"Sequence ID": seq_id, "Motif": motif_name, "Start": match.start() + 1, "End": match.end(), "Matched Sequence": match.group()})
         return results
 
     def process_uploaded_files(uploaded_files):
