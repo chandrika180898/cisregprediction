@@ -25,10 +25,17 @@ def find_direct_repeats(dna):
     matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
     return [{'start': m[0], 'len': m[1], 'motif': 'Direct Repeat'} for m in matches]
 
+
 def find_inverted_repeats(dna):
-    pattern = r"(\w{3,})\w{0,3}\1[::-1]"
-    matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
-    return [{'start': m[0], 'len': m[1], 'motif': 'Inverted Repeat'} for m in matches]
+    results = []
+    dna_seq = Seq(dna)
+    rev_comp = str(dna_seq.reverse_complement())
+    for i in range(len(dna) - 5):  # Minimum repeat length 6
+        for j in range(i + 6, len(dna)):
+            if dna[i:j] in rev_comp:
+                results.append({'start': i, 'len': j - i, 'motif': 'Inverted Repeat'})
+    return results
+
 
 def find_zdna(dna, min_z):
     total_bases = len(dna)
