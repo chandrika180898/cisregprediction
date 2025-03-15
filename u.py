@@ -17,11 +17,10 @@ if page == "Home":
     st.title("Welcome to DNA Motif Analysis Tool")
     st.write("""
         This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
-        
     """)
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
-# About Page
 
+# About Page
 elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
@@ -36,7 +35,6 @@ elif page == "About":
     - **A-form DNA:** Inverted G/C tracts exhibiting A-like base stacking, recognized by transcription factors.
     - **Parallel-stranded DNA:** Purine-rich sequences stabilized by reverse Hoogsteen hydrogen bonding, forming triplexes or quadruplexes.
     """)
-
 
 # Contact Page
 elif page == "Contact":
@@ -54,105 +52,38 @@ elif page == "Upload & Analyze":
     st.title('Upload and Analyze DNA Sequences')
     uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
     pasted_sequence = st.text_area("Or Paste a DNA Sequence Here:")
-    
-    def find_apr(dna):
-    pattern = r"([ATGC]{3,})\1{2,}"
-    matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
-    return [{'start': m[0], 'len': m[1], 'motif': 'APR'} for m in matches]
 
-    def find_direct_repeats(dna):
-    pattern = r"(\w{3,})\1"
-    matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
-    return [{'start': m[0], 'len': m[1], 'motif': 'Direct Repeat'} for m in matches]
-
-    def find_inverted_repeats(dna):
-     results = []
-     for i in range(len(dna)):
-        for j in range(i + 3, len(dna)):
-            if dna[i:j] == str(Seq(dna[i:j]).reverse_complement()):
-                results.append({'start': i, 'len': j - i, 'motif': 'Inverted Repeat'})
-    return results
-
-   def find_mirror_repeats(dna):
-    results = []
-    for i in range(len(dna)):
-        for j in range(i + 3, len(dna)):
-            if dna[i:j] == dna[i:j][::-1]:
-                results.append({'start': i, 'len': j - i, 'motif': 'Mirror Repeat'})
-    return results
-
-  def find_short_tandem_repeats(dna):
-    pattern = r"([ATGC]{2,6})\1{2,}"
-    matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
-    return [{'start': m[0], 'len': m[1], 'motif': 'Short Tandem Repeat'} for m in matches]
-
-  def find_zdna(dna, min_z=10):
-    total_bases = len(dna)
-    npy = 1
-    zrep = []
-    
-    for i in range(total_bases - min_z):
-        if dna[i:i+2] in ['AC', 'TG', 'CG', 'GC', 'CA', 'GT']:
-            npy += 1
-        else:
-            if npy >= min_z:
-                zrep.append({'start': i - npy + 2, 'len': npy, 'motif': 'Z-DNA'})
-            npy = 1
-    return zrep
-
-   def find_g_quadruplex(dna):
-    pattern = r"(GGG\w{1,7}){3}GGG"
-    matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
-    return [{'start': m[0], 'len': m[1], 'motif': 'G-Quadruplex'} for m in matches]
-
-   def analyze_sequence(dna_seq):
-    return (
-        find_apr(dna_seq) +
-        find_direct_repeats(dna_seq) +
-        find_inverted_repeats(dna_seq) +
-        find_mirror_repeats(dna_seq) +
-        find_short_tandem_repeats(dna_seq) +
-        find_zdna(dna_seq) +
-        find_g_quadruplex(dna_seq)
-    )
-
-    def find_motifs(sequence):
+    def analyze_sequence(dna_seq):
         results = []
-        for motif_name, motif_pattern in motifs.items():
-            for match in motif_pattern.finditer(str(sequence)):
-                results.append({
-                    "Motif": motif_name,
-                    "Start": match.start() + 1,
-                    "End": match.end(),
-                    "Matched Sequence": str(sequence[match.start():match.end()])
-                })
+        motifs = {
+            "APR": r"([ATGC]{3,})\1{2,}",
+            "Direct Repeat": r"(\w{3,})\1",
+            "Mirror Repeat": r"(.{3,})\1[::-1]",
+            "Short Tandem Repeat": r"([ATGC]{2,6})\1{2,}",
+            "G-Quadruplex": r"(GGG\w{1,7}){3}GGG",
+        }
+        for motif_name, pattern in motifs.items():
+            for match in re.finditer(pattern, dna_seq):
+                results.append({"Motif": motif_name, "Start": match.start(), "End": match.end(), "Length": len(match.group(0))})
         return results
-    
-    def analyze_sequences_parallel(sequences):
-        data = []
-        with ProcessPoolExecutor() as executor:
-            results = list(executor.map(find_motifs, [record.seq for record in sequences]))
-            for record, motif_results in zip(sequences, results):
-                for motif in motif_results:
-                    data.append({
-                        "Sequence ID": record.id,
-                        **motif,
-                        "Length": len(record.seq)
-                    })
-        return pd.DataFrame(data)
-    
+
     def process_uploaded_files(uploaded_files):
         all_results = pd.DataFrame()
         for uploaded_file in uploaded_files:
             fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
-            results_df = analyze_sequences_parallel(fasta_sequences)
-            all_results = pd.concat([all_results, results_df], ignore_index=True)
+            for record in fasta_sequences:
+                results = analyze_sequence(str(record.seq))
+                df = pd.DataFrame(results)
+                df["Sequence ID"] = record.id
+                all_results = pd.concat([all_results, df], ignore_index=True)
         return all_results
-    
+
     def process_pasted_sequence(sequence):
-        fake_fasta_record = [SeqIO.SeqRecord(Seq(sequence), id="Pasted_Sequence", description="Pasted Sequence Analysis")]
-        return analyze_sequences_parallel(fake_fasta_record)
-    
+        results = analyze_sequence(sequence)
+        df = pd.DataFrame(results)
+        df["Sequence ID"] = "Pasted_Sequence"
+        return df
+
     if uploaded_files or pasted_sequence:
         try:
             results_df = pd.DataFrame()
@@ -160,11 +91,6 @@ elif page == "Upload & Analyze":
                 results_df = process_uploaded_files(uploaded_files)
             if pasted_sequence:
                 results_df = pd.concat([results_df, process_pasted_sequence(pasted_sequence)], ignore_index=True)
-            
-            if 'Matched Sequence' in results_df.columns:
-                results_df['Matched Sequence'] = results_df['Matched Sequence'].astype(str)
-            else:
-                st.error("No motifs found or the 'Matched Sequence' column is missing!")
             
             st.session_state["results_df"] = results_df
             st.success("Analysis completed! Go to 'Results' to view.")
@@ -177,63 +103,22 @@ elif page == "Results":
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
         st.dataframe(results_df)
-        motif_occurrence = results_df["Motif"].value_counts().reset_index()
-        motif_occurrence.columns = ["Motif", "Total Count"]
         st.subheader("Motif Occurrence Summary")
-        st.dataframe(motif_occurrence)
+        st.dataframe(results_df["Motif"].value_counts().reset_index().rename(columns={"index": "Motif", "Motif": "Total Count"}))
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
+
+# Visualization Page
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
-    
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
-        motif_counts = results_df["Motif"].value_counts().reset_index()
-        motif_counts.columns = ["Motif", "Count"]
-        
-        # Bar Chart
         st.subheader("Motif Frequency Bar Chart")
-        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
-        st.plotly_chart(fig_bar)
-        
-        # Pie Chart
+        st.plotly_chart(px.bar(results_df, x="Motif", title="Frequency of Each Motif", color="Motif"))
         st.subheader("Motif Distribution Pie Chart")
-        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
-        st.plotly_chart(fig_pie)
-        
-        # Scatter Plot
-        st.subheader("Motif Positions in Sequences")
-        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
-        st.plotly_chart(fig_scatter)
-        
-        # Horizontal Thick Lines for Motif Positions
-        st.subheader("Motif Start and End Positions")
-        import plotly.graph_objects as go
-
-        fig_lines = go.Figure()
-
-        for _, row in results_df.iterrows():
-            fig_lines.add_trace(go.Scatter(
-                x=[row["Start"], row["End"]],
-                y=[row["Motif"], row["Motif"]],
-                mode="lines",
-                line=dict(width=6),  # Thick lines for clarity
-                name=row["Motif"]
-            ))
-
-        fig_lines.update_layout(
-            title="Motif Prediction Start and End Positions",
-            xaxis_title="Position in Sequence",
-            yaxis_title="Motif",
-            showlegend=False
-        )
-
-        st.plotly_chart(fig_lines)
-
+        st.plotly_chart(px.pie(results_df, names="Motif", title="Distribution of Motifs"))
     else:
         st.warning("No data available for visualization.")
-
-
 
 # Download Report Page
 elif page == "Download Report":
