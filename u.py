@@ -55,25 +55,25 @@ elif page == "Upload & Analyze":
     uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
     pasted_sequence = st.text_area("Or Paste a DNA Sequence Here:")
     
-   def find_apr(dna):
+    def find_apr(dna):
     pattern = r"([ATGC]{3,})\1{2,}"
     matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
     return [{'start': m[0], 'len': m[1], 'motif': 'APR'} for m in matches]
 
-   def find_direct_repeats(dna):
+    def find_direct_repeats(dna):
     pattern = r"(\w{3,})\1"
     matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
     return [{'start': m[0], 'len': m[1], 'motif': 'Direct Repeat'} for m in matches]
 
-   def find_inverted_repeats(dna):
-    results = []
-    for i in range(len(dna)):
+    def find_inverted_repeats(dna):
+     results = []
+     for i in range(len(dna)):
         for j in range(i + 3, len(dna)):
             if dna[i:j] == str(Seq(dna[i:j]).reverse_complement()):
                 results.append({'start': i, 'len': j - i, 'motif': 'Inverted Repeat'})
     return results
 
-  def find_mirror_repeats(dna):
+   def find_mirror_repeats(dna):
     results = []
     for i in range(len(dna)):
         for j in range(i + 3, len(dna)):
