@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
-from Bio import SeqIO
-from io import StringIO
 import re
-import plotly.express as px
 from Bio.Seq import Seq
+import plotly.express as px
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
@@ -12,24 +10,21 @@ page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visual
 
 # Home Page
 if page == "Home":
-    st.title("Welcome to DNA Motif Analysis Tool")
-    st.write("""
-        This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
-    """)
+    st.title("Welcome to Non-B DNA Motif Analysis Tool")
+    st.write("Analyze various non-B DNA motifs in your sequences with ease!")
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 
 # About Page
 elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
-    - **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
-    - **Direct repeats (DRs):** Consist of repeated 4- to 10-nucleotide sequences within a genome.
-    - **G-quadruplexes (G4s):** Four-stranded DNA structures stabilized by Hoogsteen hydrogen bonds and cations.
-    - **Inverted repeats (IRs):** Formed when inter-strand base pairing shifts to intra-strand pairing, leading to cruciform DNA.
-    - **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
-    - **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
-    - **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
-    - **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
+    - **A-phased Repeats (APR)**  
+    - **Direct Repeats (DR)**  
+    - **G-quadruplexes (GQ)**  
+    - **Inverted Repeats (IR)**  
+    - **Mirror Repeats (MR)**  
+    - **Short Tandem Repeats (STR)**  
+    - **Z-DNA (Z)**  
     """)
 
 # Contact Page
@@ -43,55 +38,68 @@ elif page == "Contact":
         📧 Email: chandrikagummadi1@gmail.com  
     """)
 
+# Function to analyze motifs
+def find_motifs(dna):
+    motifs = []
+
+    # A-phased repeats (APR)
+    for m in re.finditer(r"([ATGC]{3,})\1{2,}", dna):
+        motifs.append({'start': m.start(), 'length': len(m.group(0)), 'motif': 'APR'})
+
+    # Direct repeats (DR)
+    for m in re.finditer(r"(\w{3,})\1", dna):
+        motifs.append({'start': m.start(), 'length': len(m.group(0)), 'motif': 'DR'})
+
+    # Inverted repeats (IR)
+    for i in range(len(dna)):
+        for j in range(i + 3, len(dna)):
+            if dna[i:j] == str(Seq(dna[i:j]).reverse_complement()):
+                motifs.append({'start': i, 'length': j - i, 'motif': 'IR'})
+
+    # Mirror repeats (MR)
+    for i in range(len(dna)):
+        for j in range(i + 3, len(dna)):
+            if dna[i:j] == dna[i:j][::-1]:
+                motifs.append({'start': i, 'length': j - i, 'motif': 'MR'})
+
+    # Short tandem repeats (STR)
+    for m in re.finditer(r"([ATGC]{2,6})\1{2,}", dna):
+        motifs.append({'start': m.start(), 'length': len(m.group(0)), 'motif': 'STR'})
+
+    # Z-DNA (Z)
+    for m in re.finditer(r"(GC){6,}", dna):
+        motifs.append({'start': m.start(), 'length': len(m.group(0)), 'motif': 'Z'})
+
+    # G-quadruplexes (GQ)
+    for m in re.finditer(r"G{3,}.{1,7}G{3,}.{1,7}G{3,}.{1,7}G{3,}", dna):
+        motifs.append({'start': m.start(), 'length': len(m.group(0)), 'motif': 'GQ'})
+
+    return motifs
+
 # Upload & Analyze Page
 elif page == "Upload & Analyze":
     st.title('Upload and Analyze DNA Sequences')
     uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
     pasted_sequence = st.text_area("Or Paste a DNA Sequence Here:")
 
-    # DNA motif search functions
-    def find_apr(dna):
-        pattern = r"([ATGC]{3,})\1{2,}"
-        matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
-        return [{'start': m[0], 'len': m[1], 'motif': 'APR'} for m in matches]
-
-    def find_direct_repeats(dna):
-        pattern = r"(\w{3,})\1"
-        matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
-        return [{'start': m[0], 'len': m[1], 'motif': 'Direct Repeat'} for m in matches]
-
-    def find_inverted_repeats(dna):
-        results = []
-        for i in range(len(dna)):
-            for j in range(i + 3, len(dna)):
-                if dna[i:j] == str(Seq(dna[i:j]).reverse_complement()):
-                    results.append({'start': i, 'len': j - i, 'motif': 'Inverted Repeat'})
-        return results
-
-    def find_mirror_repeats(dna):
-        results = []
-        for i in range(len(dna)):
-            for j in range(i + 3, len(dna)):
-                if dna[i:j] == dna[i:j][::-1]:
-                    results.append({'start': i, 'len': j - i, 'motif': 'Mirror Repeat'})
-        return results
-
-    def find_short_tandem_repeats(dna):
-        pattern = r"([ATGC]{2,6})\1{2,}"
-        matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
-        return [{'start': m[0], 'len': m[1], 'motif': 'Short Tandem Repeat'} for m in matches]
-
-    def analyze_sequence(dna_seq):
-        return (
-            find_apr(dna_seq) +
-            find_direct_repeats(dna_seq) +
-            find_inverted_repeats(dna_seq) +
-            find_mirror_repeats(dna_seq) +
-            find_short_tandem_repeats(dna_seq)
-        )
-
     if uploaded_files or pasted_sequence:
         try:
+            if pasted_sequence:
+                sequences = [{"name": "Pasted Sequence", "seq": pasted_sequence}]
+            else:
+                sequences = []
+                for uploaded_file in uploaded_files:
+                    for record in SeqIO.parse(uploaded_file, "fasta"):
+                        sequences.append({"name": record.id, "seq": str(record.seq)})
+
+            all_results = []
+            for seq_data in sequences:
+                motifs = find_motifs(seq_data["seq"])
+                for motif in motifs:
+                    all_results.append({"Sequence": seq_data["name"], **motif})
+
+            results_df = pd.DataFrame(all_results)
+            st.session_state["results_df"] = results_df
             st.success("Analysis completed! Go to 'Results' to view.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
@@ -102,7 +110,7 @@ elif page == "Results":
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
         st.dataframe(results_df)
-        motif_occurrence = results_df["Motif"].value_counts().reset_index()
+        motif_occurrence = results_df["motif"].value_counts().reset_index()
         motif_occurrence.columns = ["Motif", "Total Count"]
         st.subheader("Motif Occurrence Summary")
         st.dataframe(motif_occurrence)
@@ -115,7 +123,7 @@ elif page == "Visualization":
 
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
-        motif_counts = results_df["Motif"].value_counts().reset_index()
+        motif_counts = results_df["motif"].value_counts().reset_index()
         motif_counts.columns = ["Motif", "Count"]
 
         # Bar Chart
