@@ -4,9 +4,6 @@ import re
 from Bio.Seq import Seq
 import plotly.express as px
 
-import streamlit as st
-import pandas as pd
-import re
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
@@ -54,15 +51,6 @@ def find_motifs(dna):
     return motifs
 
 # Upload & Analyze Page
-elif page == "Upload & Analyze":  
-    st.title("Upload & Analyze DNA Sequences")
-    dna_sequence = st.text_area("Paste a DNA Sequence Here:")
-
-    if dna_sequence:
-        results = find_motifs(dna_sequence)
-        results_df = pd.DataFrame(results)
-        st.session_state["results_df"] = results_df
-        st.success("Analysis completed! Go to 'Results' to view.")
 
 # Results Page
 elif page == "Results":
