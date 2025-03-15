@@ -1,12 +1,61 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
-import plotly.express as px
 from Bio import SeqIO
 from io import StringIO
 import re
+import plotly.express as px
+from concurrent.futures import ProcessPoolExecutor
+from reportlab.pdfgen import canvas
 from Bio.Seq import Seq
 
-def find_apr(dna):
+# Sidebar Navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
+
+# Home Page
+if page == "Home":
+    st.title("Welcome to DNA Motif Analysis Tool")
+    st.write("""
+        This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
+        
+    """)
+    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
+# About Page
+
+elif page == "About":
+    st.title("About DNA Motif Analysis")
+    st.write("""
+    - **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
+    - **Direct repeats (DRs):** Consist of repeated 4- to 10-nucleotide sequences within a genome.
+    - **G-quadruplexes (G4s):** Four-stranded DNA structures stabilized by Hoogsteen hydrogen bonds and cations.
+    - **Inverted repeats (IRs):** Formed when inter-strand base pairing shifts to intra-strand pairing, leading to cruciform DNA.
+    - **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
+    - **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
+    - **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
+    - **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
+    - **A-form DNA:** Inverted G/C tracts exhibiting A-like base stacking, recognized by transcription factors.
+    - **Parallel-stranded DNA:** Purine-rich sequences stabilized by reverse Hoogsteen hydrogen bonding, forming triplexes or quadruplexes.
+    """)
+
+
+# Contact Page
+elif page == "Contact":
+    st.title("Contact")
+    st.write("""
+        **Dr. Y V Rajesh**  
+        📧 Email: yvrajesh_bt@kluniversity.in 
+        
+        **G. Aruna Sesha Chandrika**  
+        📧 Email: chandrikagummadi1@gmail.com  
+    """)
+
+# Upload & Analyze Page
+elif page == "Upload & Analyze":
+    st.title('Upload and Analyze DNA Sequences')
+    uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
+    pasted_sequence = st.text_area("Or Paste a DNA Sequence Here:")
+    
+   def find_apr(dna):
     pattern = r"([ATGC]{3,})\1{2,}"
     matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
     return [{'start': m[0], 'len': m[1], 'motif': 'APR'} for m in matches]
@@ -67,65 +116,131 @@ def analyze_sequence(dna_seq):
         find_g_quadruplex(dna_seq)
     )
 
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
-
-if page == "Home":
-    st.title("Welcome to NON-B DNA Motif Analysis Tool")
-    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
-    st.write("Upload or paste DNA sequences to analyze Non-B DNA motifs.")
-
-elif page == "Upload & Analyze":
-    st.title("Upload and Analyze NON-B DNA Sequences")
-    uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
-    pasted_sequence = st.text_area("Or paste your DNA sequence here:")
+    def find_motifs(sequence):
+        results = []
+        for motif_name, motif_pattern in motifs.items():
+            for match in motif_pattern.finditer(str(sequence)):
+                results.append({
+                    "Motif": motif_name,
+                    "Start": match.start() + 1,
+                    "End": match.end(),
+                    "Matched Sequence": str(sequence[match.start():match.end()])
+                })
+        return results
     
-    results_df = pd.DataFrame()
+    def analyze_sequences_parallel(sequences):
+        data = []
+        with ProcessPoolExecutor() as executor:
+            results = list(executor.map(find_motifs, [record.seq for record in sequences]))
+            for record, motif_results in zip(sequences, results):
+                for motif in motif_results:
+                    data.append({
+                        "Sequence ID": record.id,
+                        **motif,
+                        "Length": len(record.seq)
+                    })
+        return pd.DataFrame(data)
+    
+    def process_uploaded_files(uploaded_files):
+        all_results = pd.DataFrame()
+        for uploaded_file in uploaded_files:
+            fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
+            results_df = analyze_sequences_parallel(fasta_sequences)
+            all_results = pd.concat([all_results, results_df], ignore_index=True)
+        return all_results
+    
+    def process_pasted_sequence(sequence):
+        fake_fasta_record = [SeqIO.SeqRecord(Seq(sequence), id="Pasted_Sequence", description="Pasted Sequence Analysis")]
+        return analyze_sequences_parallel(fake_fasta_record)
     
     if uploaded_files or pasted_sequence:
-        all_results = []
-        
-        if uploaded_files:
-            for uploaded_file in uploaded_files:
-                fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
-                for record in fasta_sequences:
-                    all_results.extend(analyze_sequence(str(record.seq)))
-        
-        if pasted_sequence:
-            all_results.extend(analyze_sequence(pasted_sequence))
-        
-        results_df = pd.DataFrame(all_results)
-        st.session_state["results_df"] = results_df
-        st.success("Analysis completed! Go to 'Results' or 'Visualization'.")
+        try:
+            results_df = pd.DataFrame()
+            if uploaded_files:
+                results_df = process_uploaded_files(uploaded_files)
+            if pasted_sequence:
+                results_df = pd.concat([results_df, process_pasted_sequence(pasted_sequence)], ignore_index=True)
+            
+            if 'Matched Sequence' in results_df.columns:
+                results_df['Matched Sequence'] = results_df['Matched Sequence'].astype(str)
+            else:
+                st.error("No motifs found or the 'Matched Sequence' column is missing!")
+            
+            st.session_state["results_df"] = results_df
+            st.success("Analysis completed! Go to 'Results' to view.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
+# Results Page
 elif page == "Results":
     st.title("Analysis Results")
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
-        if not results_df.empty:
-            st.dataframe(results_df)
-        else:
-            st.warning("No motifs found.")
+        st.dataframe(results_df)
+        motif_occurrence = results_df["Motif"].value_counts().reset_index()
+        motif_occurrence.columns = ["Motif", "Total Count"]
+        st.subheader("Motif Occurrence Summary")
+        st.dataframe(motif_occurrence)
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
+elif page == "Visualization":
+    st.title("Visualization of Motif Analysis")
+    
+    if "results_df" in st.session_state:
+        results_df = st.session_state["results_df"]
+        motif_counts = results_df["Motif"].value_counts().reset_index()
+        motif_counts.columns = ["Motif", "Count"]
+        
+        # Bar Chart
+        st.subheader("Motif Frequency Bar Chart")
+        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
+        st.plotly_chart(fig_bar)
+        
+        # Pie Chart
+        st.subheader("Motif Distribution Pie Chart")
+        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
+        st.plotly_chart(fig_pie)
+        
+        # Scatter Plot
+        st.subheader("Motif Positions in Sequences")
+        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
+        st.plotly_chart(fig_scatter)
+        
+        # Horizontal Thick Lines for Motif Positions
+        st.subheader("Motif Start and End Positions")
+        import plotly.graph_objects as go
 
+        fig_lines = go.Figure()
+
+        for _, row in results_df.iterrows():
+            fig_lines.add_trace(go.Scatter(
+                x=[row["Start"], row["End"]],
+                y=[row["Motif"], row["Motif"]],
+                mode="lines",
+                line=dict(width=6),  # Thick lines for clarity
+                name=row["Motif"]
+            ))
+
+        fig_lines.update_layout(
+            title="Motif Prediction Start and End Positions",
+            xaxis_title="Position in Sequence",
+            yaxis_title="Motif",
+            showlegend=False
+        )
+
+        st.plotly_chart(fig_lines)
+
+    else:
+        st.warning("No data available for visualization.")
+
+
+
+# Download Report Page
 elif page == "Download Report":
     st.title("Download Report")
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
-        if not results_df.empty:
-            csv = results_df.to_csv(index=False)
-            st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
-        else:
-            st.warning("No data available. Please analyze sequences first.")
+        csv = results_df.to_csv(index=False)
+        st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
     else:
         st.warning("No data available. Please analyze sequences first.")
-
-if page == "About":
-    st.title("About DNA Motif Analysis")
-    st.write("This tool identifies various Non-B DNA motifs including Z-DNA, Direct Repeats, Inverted Repeats, Mirror Repeats, Short Tandem Repeats, G-Quadruplex, and APR.")
-
-if page == "Contact":
-    st.title("Contact")
-    st.write("Dr. Y V Rajesh: yvrajesh_bt@kluniversity.in")
-    st.write("G. Aruna Sesha Chandrika: chandrikagummadi1@gmail.com")
