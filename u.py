@@ -3,19 +3,15 @@ import pandas as pd
 from Bio import SeqIO
 from io import StringIO
 import re
-from reportlab.pdfgen import canvas
-from Bio.Seq import Seq
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
+page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Download Report", "About", "Contact"])
 
 # Home Page
 if page == "Home":
     st.title("Welcome to DNA Motif Analysis Tool")
-    st.write("""
-        This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
-    """)
+    st.write("This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.")
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 
 # About Page
@@ -98,7 +94,8 @@ elif page == "Upload & Analyze":
     # Read DNA sequence from FASTA
     def read_fasta(file):
         sequences = []
-        for record in SeqIO.parse(file, "fasta"):
+        file_content = StringIO(file.getvalue().decode("utf-8"))  # Convert uploaded file to StringIO
+        for record in SeqIO.parse(file_content, "fasta"):
             sequences.append((record.id, str(record.seq).lower()))
         return sequences
 
@@ -161,4 +158,3 @@ elif page == "Download Report":
         gff_file = save_to_gff()
         with open(gff_file, "rb") as file:
             st.download_button("Download GFF", file, file_name="motifs_output.gff", mime="text/gff")
-
