@@ -17,10 +17,11 @@ if page == "Home":
     st.title("Welcome to DNA Motif Analysis Tool")
     st.write("""
         This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
+        
     """)
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
-
 # About Page
+
 elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
@@ -52,80 +53,70 @@ elif page == "Upload & Analyze":
     st.title('Upload and Analyze DNA Sequences')
     uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
     pasted_sequence = st.text_area("Or Paste a DNA Sequence Here:")
+    
+    def find_apr(dna):
+        pattern = r"([ATGC]{3,})\\1{2,}"
+        matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
+        return [{'start': m[0], 'len': m[1], 'motif': 'APR'} for m in matches]
 
-    def analyze_sequence(dna_seq):
+    def find_direct_repeats(dna):
+        pattern = r"(\w{3,})\\1"
+        matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
+        return [{'start': m[0], 'len': m[1], 'motif': 'Direct Repeat'} for m in matches]
+
+    def find_inverted_repeats(dna):
         results = []
-        motifs = {
-            "APR": r"([ATGC]{3,})\1{2,}",
-            "Direct Repeat": r"(\w{3,})\1",
-            "Mirror Repeat": r"(.{3,})\1[::-1]",
-            "Short Tandem Repeat": r"([ATGC]{2,6})\1{2,}",
-            "G-Quadruplex": r"(GGG\w{1,7}){3}GGG",
-        }
-        for motif_name, pattern in motifs.items():
-            for match in re.finditer(pattern, dna_seq):
-                results.append({"Motif": motif_name, "Start": match.start(), "End": match.end(), "Length": len(match.group(0))})
+        for i in range(len(dna)):
+            for j in range(i + 3, len(dna)):
+                if dna[i:j] == str(Seq(dna[i:j]).reverse_complement()):
+                    results.append({'start': i, 'len': j - i, 'motif': 'Inverted Repeat'})
         return results
 
-    def process_uploaded_files(uploaded_files):
-        all_results = pd.DataFrame()
-        for uploaded_file in uploaded_files:
-            fasta_sequences = list(SeqIO.parse(StringIO(uploaded_file.getvalue().decode('utf-8')), 'fasta'))
-            for record in fasta_sequences:
-                results = analyze_sequence(str(record.seq))
-                df = pd.DataFrame(results)
-                df["Sequence ID"] = record.id
-                all_results = pd.concat([all_results, df], ignore_index=True)
-        return all_results
+    def find_mirror_repeats(dna):
+        results = []
+        for i in range(len(dna)):
+            for j in range(i + 3, len(dna)):
+                if dna[i:j] == dna[i:j][::-1]:
+                    results.append({'start': i, 'len': j - i, 'motif': 'Mirror Repeat'})
+        return results
 
-    def process_pasted_sequence(sequence):
-        results = analyze_sequence(sequence)
-        df = pd.DataFrame(results)
-        df["Sequence ID"] = "Pasted_Sequence"
-        return df
+    def find_short_tandem_repeats(dna):
+        pattern = r"([ATGC]{2,6})\\1{2,}"
+        matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
+        return [{'start': m[0], 'len': m[1], 'motif': 'Short Tandem Repeat'} for m in matches]
+
+    def find_zdna(dna, min_z=10):
+        total_bases = len(dna)
+        npy = 1
+        zrep = []
+        
+        for i in range(total_bases - min_z):
+            if dna[i:i+2] in ['AC', 'TG', 'CG', 'GC', 'CA', 'GT']:
+                npy += 1
+            else:
+                if npy >= min_z:
+                    zrep.append({'start': i - npy + 2, 'len': npy, 'motif': 'Z-DNA'})
+                npy = 1
+        return zrep
+
+    def find_g_quadruplex(dna):
+        pattern = r"(GGG\w{1,7}){3}GGG"
+        matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
+        return [{'start': m[0], 'len': m[1], 'motif': 'G-Quadruplex'} for m in matches]
+
+    def analyze_sequence(dna_seq):
+        return (
+            find_apr(dna_seq) +
+            find_direct_repeats(dna_seq) +
+            find_inverted_repeats(dna_seq) +
+            find_mirror_repeats(dna_seq) +
+            find_short_tandem_repeats(dna_seq) +
+            find_zdna(dna_seq) +
+            find_g_quadruplex(dna_seq)
+        )
 
     if uploaded_files or pasted_sequence:
         try:
-            results_df = pd.DataFrame()
-            if uploaded_files:
-                results_df = process_uploaded_files(uploaded_files)
-            if pasted_sequence:
-                results_df = pd.concat([results_df, process_pasted_sequence(pasted_sequence)], ignore_index=True)
-            
-            st.session_state["results_df"] = results_df
             st.success("Analysis completed! Go to 'Results' to view.")
         except Exception as e:
             st.error(f"An error occurred: {e}")
-
-# Results Page
-elif page == "Results":
-    st.title("Analysis Results")
-    if "results_df" in st.session_state:
-        results_df = st.session_state["results_df"]
-        st.dataframe(results_df)
-        st.subheader("Motif Occurrence Summary")
-        st.dataframe(results_df["Motif"].value_counts().reset_index().rename(columns={"index": "Motif", "Motif": "Total Count"}))
-    else:
-        st.warning("No results available. Please upload or paste a sequence first.")
-
-# Visualization Page
-elif page == "Visualization":
-    st.title("Visualization of Motif Analysis")
-    if "results_df" in st.session_state:
-        results_df = st.session_state["results_df"]
-        st.subheader("Motif Frequency Bar Chart")
-        st.plotly_chart(px.bar(results_df, x="Motif", title="Frequency of Each Motif", color="Motif"))
-        st.subheader("Motif Distribution Pie Chart")
-        st.plotly_chart(px.pie(results_df, names="Motif", title="Distribution of Motifs"))
-    else:
-        st.warning("No data available for visualization.")
-
-# Download Report Page
-elif page == "Download Report":
-    st.title("Download Report")
-    if "results_df" in st.session_state:
-        results_df = st.session_state["results_df"]
-        csv = results_df.to_csv(index=False)
-        st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
-    else:
-        st.warning("No data available. Please analyze sequences first.")
