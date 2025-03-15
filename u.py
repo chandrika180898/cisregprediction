@@ -60,12 +60,12 @@ elif page == "Upload & Analyze":
     matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
     return [{'start': m[0], 'len': m[1], 'motif': 'APR'} for m in matches]
 
-def find_direct_repeats(dna):
+   def find_direct_repeats(dna):
     pattern = r"(\w{3,})\1"
     matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
     return [{'start': m[0], 'len': m[1], 'motif': 'Direct Repeat'} for m in matches]
 
-def find_inverted_repeats(dna):
+   def find_inverted_repeats(dna):
     results = []
     for i in range(len(dna)):
         for j in range(i + 3, len(dna)):
@@ -73,7 +73,7 @@ def find_inverted_repeats(dna):
                 results.append({'start': i, 'len': j - i, 'motif': 'Inverted Repeat'})
     return results
 
-def find_mirror_repeats(dna):
+  def find_mirror_repeats(dna):
     results = []
     for i in range(len(dna)):
         for j in range(i + 3, len(dna)):
@@ -81,12 +81,12 @@ def find_mirror_repeats(dna):
                 results.append({'start': i, 'len': j - i, 'motif': 'Mirror Repeat'})
     return results
 
-def find_short_tandem_repeats(dna):
+  def find_short_tandem_repeats(dna):
     pattern = r"([ATGC]{2,6})\1{2,}"
     matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
     return [{'start': m[0], 'len': m[1], 'motif': 'Short Tandem Repeat'} for m in matches]
 
-def find_zdna(dna, min_z=10):
+  def find_zdna(dna, min_z=10):
     total_bases = len(dna)
     npy = 1
     zrep = []
@@ -100,12 +100,12 @@ def find_zdna(dna, min_z=10):
             npy = 1
     return zrep
 
-def find_g_quadruplex(dna):
+   def find_g_quadruplex(dna):
     pattern = r"(GGG\w{1,7}){3}GGG"
     matches = [(m.start(), len(m.group(0))) for m in re.finditer(pattern, dna)]
     return [{'start': m[0], 'len': m[1], 'motif': 'G-Quadruplex'} for m in matches]
 
-def analyze_sequence(dna_seq):
+   def analyze_sequence(dna_seq):
     return (
         find_apr(dna_seq) +
         find_direct_repeats(dna_seq) +
