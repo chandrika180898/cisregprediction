@@ -4,6 +4,10 @@ from Bio import SeqIO
 from io import StringIO
 import re
 
+# Initialize session state
+if "results_df" not in st.session_state:
+    st.session_state["results_df"] = None
+
 # Sidebar Navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Download Report", "About", "Contact"])
@@ -114,14 +118,14 @@ elif page == "Upload & Analyze":
             sequences.append(("Pasted_Sequence", pasted_sequence.lower()))
 
         analyze_sequences(sequences)
-        
-        results_df = pd.DataFrame([{
-            "Motif": motif.type,
-            "Start": motif.start + 1,
-            "End": motif.end + 1
-        } for motif in motifs])
 
-        if not results_df.empty:
+        if motifs:
+            results_df = pd.DataFrame([{
+                "Motif": motif.type,
+                "Start": motif.start + 1,
+                "End": motif.end + 1
+            } for motif in motifs])
+
             st.session_state["results_df"] = results_df
             st.success("Analysis completed! Go to 'Results' to view.")
 
@@ -129,16 +133,16 @@ elif page == "Upload & Analyze":
 elif page == "Results":
     st.title("Analysis Results")
 
-    if "results_df" in st.session_state:
+    if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
 
         st.subheader("Motif Analysis Results")
-        st.table(results_df)  # Display as table
+        st.dataframe(results_df)
 
         motif_counts = results_df["Motif"].value_counts().reset_index()
         motif_counts.columns = ["Motif", "Count"]
         st.subheader("Motif Occurrence Summary")
-        st.table(motif_counts)
+        st.dataframe(motif_counts)
 
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
@@ -147,9 +151,8 @@ elif page == "Results":
 elif page == "Download Report":
     st.title("Download Analysis Report")
 
-    if "results_df" in st.session_state:
+    if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
-
         csv_data = results_df.to_csv(index=False).encode("utf-8")
 
         st.download_button(
