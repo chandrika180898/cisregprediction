@@ -4,26 +4,31 @@ import re
 from Bio.Seq import Seq
 import plotly.express as px
 
+import streamlit as st
+import pandas as pd
+import re
+
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
+page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "About", "Contact"])
 
 # Home Page
 if page == "Home":
     st.title("Welcome to Non-B DNA Motif Analysis Tool")
-    st.write("Analyze various non-B DNA motifs in your sequences with ease!")
+    st.write("Analyze various non-B DNA motifs in your sequences!")
 
 # About Page
 elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
-    - **A-phased Repeats (APR)**  
-    - **Direct Repeats (DR)**  
-    - **G-quadruplexes (GQ)**  
-    - **Inverted Repeats (IR)**  
-    - **Mirror Repeats (MR)**  
-    - **Short Tandem Repeats (STR)**  
-    - **Z-DNA (Z)**  
+    This tool detects the following non-B DNA structures:
+    - **A-phased Repeats (APR)**
+    - **Direct Repeats (DR)**
+    - **G-quadruplexes (GQ)**
+    - **Inverted Repeats (IR)**
+    - **Mirror Repeats (MR)**
+    - **Short Tandem Repeats (STR)**
+    - **Z-DNA (ZDNA)**
     """)
 
 # Contact Page
@@ -31,14 +36,14 @@ elif page == "Contact":
     st.title("Contact Information")
     st.write("📧 Email: yvrajesh_bt@kluniversity.in")
 
-# Function to analyze motifs
+# Function to detect motifs
 def find_motifs(dna):
     motifs = []
     patterns = {
         "APR": r"([ATGC]{3,})\1{2,}",
         "DR": r"(\w{3,})\1",
         "STR": r"([ATGC]{2,6})\1{2,}",
-        "Z": r"(GC){6,}",
+        "ZDNA": r"(GC){6,}",
         "GQ": r"G{3,}.{1,7}G{3,}.{1,7}G{3,}.{1,7}G{3,}"
     }
 
@@ -49,8 +54,8 @@ def find_motifs(dna):
     return motifs
 
 # Upload & Analyze Page
-elif page == "Upload & Analyze":
-    st.title('Upload & Analyze DNA Sequences')
+elif page == "Upload & Analyze":  
+    st.title("Upload & Analyze DNA Sequences")
     dna_sequence = st.text_area("Paste a DNA Sequence Here:")
 
     if dna_sequence:
@@ -66,6 +71,7 @@ elif page == "Results":
         st.dataframe(st.session_state["results_df"])
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
+
 
 # Download Report Page
 elif page == "Download Report":
