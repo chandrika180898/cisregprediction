@@ -1,137 +1,164 @@
 import streamlit as st
 import pandas as pd
+from Bio import SeqIO
+from io import StringIO
 import re
+from reportlab.pdfgen import canvas
 from Bio.Seq import Seq
-import plotly.express as px
-
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "About", "Contact"])
+page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Visualization", "Download Report", "About", "Contact"])
 
 # Home Page
 if page == "Home":
-    st.title("Welcome to Non-B DNA Motif Analysis Tool")
-    st.write("Analyze various non-B DNA motifs in your sequences!")
+    st.title("Welcome to DNA Motif Analysis Tool")
+    st.write("""
+        This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.
+    """)
+    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 
 # About Page
 elif page == "About":
     st.title("About DNA Motif Analysis")
     st.write("""
-    This tool detects the following non-B DNA structures:
-    - **A-phased Repeats (APR)**
+    This tool detects various DNA motifs including:
     - **Direct Repeats (DR)**
-    - **G-quadruplexes (GQ)**
     - **Inverted Repeats (IR)**
-    - **Mirror Repeats (MR)**
     - **Short Tandem Repeats (STR)**
-    - **Z-DNA (ZDNA)**
+    - **Z-DNA**
+    - **G-Quadruplex (GQ)**
     """)
 
 # Contact Page
 elif page == "Contact":
-    st.title("Contact Information")
-    st.write("📧 Email: yvrajesh_bt@kluniversity.in")
-
-# Function to detect motifs
-def find_motifs(dna):
-    motifs = []
-    patterns = {
-        "APR": r"([ATGC]{3,})\1{2,}",
-        "DR": r"(\w{3,})\1",
-        "STR": r"([ATGC]{2,6})\1{2,}",
-        "ZDNA": r"(GC){6,}",
-        "GQ": r"G{3,}.{1,7}G{3,}.{1,7}G{3,}.{1,7}G{3,}"
-    }
-
-    for motif, pattern in patterns.items():
-        for match in re.finditer(pattern, dna):
-            motifs.append({'start': match.start(), 'length': len(match.group(0)), 'motif': motif})
-
-    return motifs
+    st.title("Contact")
+    st.write("""
+        **Dr. Y V Rajesh**  
+        📧 Email: yvrajesh_bt@kluniversity.in 
+        
+        **G. Aruna Sesha Chandrika**  
+        📧 Email: chandrikagummadi1@gmail.com  
+    """)
 
 # Upload & Analyze Page
+elif page == "Upload & Analyze":
+    st.title('Upload and Analyze DNA Sequences')
+    uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
+    pasted_sequence = st.text_area("Or Paste a DNA Sequence Here:")
+
+    # Store motifs
+    class Motif:
+        def __init__(self, start, end, motif_type):
+            self.start = start
+            self.end = end
+            self.type = motif_type
+
+    motifs = []
+
+    def store_motif(start, end, motif_type):
+        motifs.append(Motif(start, end, motif_type))
+
+    # Detect motifs
+    def find_direct_repeats(dna, min_size=6, max_gap=5):
+        seq_len = len(dna)
+        for i in range(seq_len - min_size):
+            for j in range(i + min_size + max_gap, seq_len):
+                if dna[i:i + min_size] == dna[j:j + min_size]:
+                    store_motif(i, j + min_size - 1, "Direct Repeat")
+
+    def find_inverted_repeats(dna, min_size=6, max_gap=5):
+        seq_len = len(dna)
+        for i in range(seq_len - min_size):
+            for j in range(i + min_size + max_gap, seq_len):
+                if dna[i:i + min_size] == dna[j - min_size + 1:j + 1][::-1]:
+                    store_motif(i, j, "Inverted Repeat")
+
+    def find_short_tandem_repeats(dna, min_repeats=3):
+        seq_len = len(dna)
+        for i in range(seq_len - 2):
+            for j in range(1, seq_len // 2):
+                repeat_count = 0
+                while dna[i:i + j] == dna[i + j * repeat_count:i + j * (repeat_count + 1)]:
+                    repeat_count += 1
+                    if repeat_count >= min_repeats:
+                        store_motif(i, i + j * repeat_count - 1, "Short Tandem Repeat")
+                        break
+
+    def find_z_dna(dna, min_size=6):
+        seq_len = len(dna)
+        for i in range(seq_len - min_size):
+            if re.fullmatch(r"[cg]+", dna[i:i + min_size]):
+                store_motif(i, i + min_size - 1, "Z-DNA")
+
+    def find_g_quadruplex(dna, minGQ=4, maxGQspacer=10):
+        for match in re.finditer(r"(g{4,})(.{0," + str(maxGQspacer) + r"})(g{4,})", dna, re.IGNORECASE):
+            store_motif(match.start(), match.end(), "G-Quadruplex")
+
+    # Read DNA sequence from FASTA
+    def read_fasta(file):
+        sequences = []
+        for record in SeqIO.parse(file, "fasta"):
+            sequences.append((record.id, str(record.seq).lower()))
+        return sequences
+
+    def analyze_sequences(sequences):
+        motifs.clear()
+        for seq_id, dna in sequences:
+            find_direct_repeats(dna)
+            find_inverted_repeats(dna)
+            find_short_tandem_repeats(dna)
+            find_z_dna(dna)
+            find_g_quadruplex(dna)
+
+    if uploaded_files or pasted_sequence:
+        sequences = []
+        if uploaded_files:
+            for uploaded_file in uploaded_files:
+                sequences.extend(read_fasta(uploaded_file))
+        if pasted_sequence:
+            sequences.append(("Pasted_Sequence", pasted_sequence.lower()))
+
+        analyze_sequences(sequences)
+        
+        results_df = pd.DataFrame([{
+            "Motif": motif.type,
+            "Start": motif.start + 1,
+            "End": motif.end + 1
+        } for motif in motifs])
+
+        if not results_df.empty:
+            st.session_state["results_df"] = results_df
+            st.success("Analysis completed! Go to 'Results' to view.")
 
 # Results Page
 elif page == "Results":
     st.title("Analysis Results")
     if "results_df" in st.session_state:
-        st.dataframe(st.session_state["results_df"])
+        results_df = st.session_state["results_df"]
+        st.dataframe(results_df)
+        motif_counts = results_df["Motif"].value_counts().reset_index()
+        motif_counts.columns = ["Motif", "Count"]
+        st.subheader("Motif Occurrence Summary")
+        st.dataframe(motif_counts)
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
-
 
 # Download Report Page
 elif page == "Download Report":
-    st.title("Download Report")
-    if "results_df" in st.session_state:
-        csv = st.session_state["results_df"].to_csv(index=False)
-        st.download_button("Download CSV", csv, file_name="motif_results.csv", mime="text/csv")
-    else:
-        st.warning("No data available.")
-import streamlit as st
-import pandas as pd
-import re
+    st.title("Download Analysis Report")
 
-# Sidebar Navigation
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "About", "Contact"])
+    def save_to_gff(filename="motifs_output.gff"):
+        if "results_df" in st.session_state:
+            df = st.session_state["results_df"]
+            with open(filename, "w") as f:
+                f.write("##gff-version 3\n")
+                for _, row in df.iterrows():
+                    f.write(f"SEQ\tMotifFinder\t{row['Motif']}\t{row['Start']}\t{row['End']}\t.\t+\t.\tID={row['Motif']}_{row['Start']}\n")
+            return filename
 
-# Home Page
-if page == "Home":
-    st.title("Welcome to Non-B DNA Motif Analysis Tool")
-    st.write("Analyze various non-B DNA motifs in your sequences!")
+    if st.button("Download GFF Report"):
+        gff_file = save_to_gff()
+        with open(gff_file, "rb") as file:
+            st.download_button("Download GFF", file, file_name="motifs_output.gff", mime="text/gff")
 
-# About Page
-elif page == "About":
-    st.title("About DNA Motif Analysis")
-    st.write("""
-    - **A-phased Repeats (APR)**  
-    - **Direct Repeats (DR)**  
-    - **G-quadruplexes (GQ)**  
-    - **Inverted Repeats (IR)**  
-    - **Mirror Repeats (MR)**  
-    - **Short Tandem Repeats (STR)**  
-    - **Z-DNA (ZDNA)**  
-    """)
-
-# Contact Page
-elif page == "Contact":
-    st.title("Contact Information")
-    st.write("📧 Email: yvrajesh_bt@kluniversity.in")
-
-# Function to detect motifs
-def find_motifs(dna):
-    motifs = []
-    patterns = {
-        "APR": r"([ATGC]{3,})\1{2,}",
-        "DR": r"(\w{3,})\1",
-        "STR": r"([ATGC]{2,6})\1{2,}",
-        "ZDNA": r"(GC){6,}",
-        "GQ": r"G{3,}.{1,7}G{3,}.{1,7}G{3,}.{1,7}G{3,}"
-    }
-
-    for motif, pattern in patterns.items():
-        for match in re.finditer(pattern, dna):
-            motifs.append({'start': match.start(), 'length': len(match.group(0)), 'motif': motif})
-
-    return motifs
-
-# Upload & Analyze Page
-elif page == "Upload & Analyze":  
-    st.title('Upload & Analyze DNA Sequences')
-    dna_sequence = st.text_area("Paste a DNA Sequence Here:")
-
-    if dna_sequence:
-        results = find_motifs(dna_sequence)
-        results_df = pd.DataFrame(results)
-        st.session_state["results_df"] = results_df
-        st.success("Analysis completed! Go to 'Results' to view.")
-
-# Results Page
-elif page == "Results":
-    st.title("Analysis Results")
-    if "results_df" in st.session_state:
-        st.dataframe(st.session_state["results_df"])
-    else:
-        st.warning("No results available. Please upload or paste a sequence first.")
