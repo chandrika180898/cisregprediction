@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 from Bio import SeqIO
 from io import StringIO
 import re
-from concurrent.futures import ProcessPoolExecutor
 from Bio.Seq import Seq
 
 # Initialize session state
@@ -20,7 +19,7 @@ page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Downlo
 if page == "Home":
     st.title("Welcome to DNA Motif Analysis Tool")
     st.write("This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.")
-    st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
+    st.image("https://raw.githubusercontent.com/chandrikagummadi1/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
 
 # Upload & Analyze Page
 elif page == "Upload & Analyze":
@@ -132,39 +131,34 @@ elif page == "Results":
 # **Visualization Page**
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
-    
+
     if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
         motif_counts = results_df["Motif"].value_counts().reset_index()
         motif_counts.columns = ["Motif", "Count"]
-        
+
         # Bar Chart
         st.subheader("Motif Frequency Bar Chart")
         fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
         st.plotly_chart(fig_bar)
-        
+
         # Pie Chart
         st.subheader("Motif Distribution Pie Chart")
         fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
         st.plotly_chart(fig_pie)
-        
-        # Scatter Plot
-        st.subheader("Motif Positions in Sequences")
-        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
-        st.plotly_chart(fig_scatter)
-        
+
         # Horizontal Thick Lines for Motif Positions
         st.subheader("Motif Start and End Positions")
-        import plotly.graph_objects as go
 
         fig_lines = go.Figure()
+        motif_dict = {motif: i for i, motif in enumerate(results_df["Motif"].unique())}
 
         for _, row in results_df.iterrows():
             fig_lines.add_trace(go.Scatter(
                 x=[row["Start"], row["End"]],
-                y=[row["Motif"], row["Motif"]],
+                y=[motif_dict[row["Motif"]], motif_dict[row["Motif"]]],
                 mode="lines",
-                line=dict(width=6),  # Thick lines for clarity
+                line=dict(width=6),
                 name=row["Motif"]
             ))
 
@@ -172,7 +166,12 @@ elif page == "Visualization":
             title="Motif Prediction Start and End Positions",
             xaxis_title="Position in Sequence",
             yaxis_title="Motif",
-            showlegend=False
+            yaxis=dict(
+                tickmode="array",
+                tickvals=list(motif_dict.values()),
+                ticktext=list(motif_dict.keys())
+            ),
+            showlegend=True
         )
 
         st.plotly_chart(fig_lines)
@@ -189,29 +188,3 @@ elif page == "Download Report":
         st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
     else:
         st.warning("No data available. Please analyze sequences first.")
-elif page == "About":
-    st.title("About DNA Motif Analysis")
-    st.write("""
-    - **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
-    - **Direct repeats (DRs):** Consist of repeated 4- to 10-nucleotide sequences within a genome.
-    - **G-quadruplexes (G4s):** Four-stranded DNA structures stabilized by Hoogsteen hydrogen bonds and cations.
-    - **Inverted repeats (IRs):** Formed when inter-strand base pairing shifts to intra-strand pairing, leading to cruciform DNA.
-    - **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
-    - **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
-    - **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
-    - **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
-    - **A-form DNA:** Inverted G/C tracts exhibiting A-like base stacking, recognized by transcription factors.
-    - **Parallel-stranded DNA:** Purine-rich sequences stabilized by reverse Hoogsteen hydrogen bonding, forming triplexes or quadruplexes.
-    """)
-
-
-# Contact Page
-elif page == "Contact":
-    st.title("Contact")
-    st.write("""
-        **Dr. Y V Rajesh**  
-        📧 Email: yvrajesh_bt@kluniversity.in 
-        
-        **G. Aruna Sesha Chandrika**  
-        📧 Email: chandrikagummadi1@gmail.com  
-    """)
