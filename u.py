@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from Bio import SeqIO
 from io import StringIO
 import re
@@ -10,36 +12,13 @@ if "results_df" not in st.session_state:
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Download Report", "About", "Contact"])
+page = st.sidebar.radio("Go to", ["Home", "Upload & Analyze", "Results", "Download Report", "Visualization", "About", "Contact"])
 
 # Home Page
 if page == "Home":
     st.title("Welcome to DNA Motif Analysis Tool")
     st.write("This tool helps analyze DNA sequences to identify various **Non-B DNA motifs**.")
     st.image("https://raw.githubusercontent.com/chandrika180898/cisregprediction/main/images/New%20Microsoft%20PowerPoint%20Presentation.jpg")
-
-# About Page
-elif page == "About":
-    st.title("About DNA Motif Analysis")
-    st.write("""
-    This tool detects various DNA motifs including:
-    - **Direct Repeats (DR)**
-    - **Inverted Repeats (IR)**
-    - **Short Tandem Repeats (STR)**
-    - **Z-DNA**
-    - **G-Quadruplex (GQ)**
-    """)
-
-# Contact Page
-elif page == "Contact":
-    st.title("Contact")
-    st.write("""
-        **Dr. Y V Rajesh**  
-        📧 Email: yvrajesh_bt@kluniversity.in 
-        
-        **G. Aruna Sesha Chandrika**  
-        📧 Email: chandrikagummadi1@gmail.com  
-    """)
 
 # Upload & Analyze Page
 elif page == "Upload & Analyze":
@@ -127,7 +106,7 @@ elif page == "Upload & Analyze":
             } for motif in motifs])
 
             st.session_state["results_df"] = results_df
-            st.success("Analysis completed! Go to 'Results' to view.")
+            st.success("Analysis completed! Go to 'Results' or 'Visualization' to view.")
 
 # Results Page
 elif page == "Results":
@@ -135,7 +114,6 @@ elif page == "Results":
 
     if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
-
         st.subheader("Motif Analysis Results")
         st.dataframe(results_df)
 
@@ -146,6 +124,56 @@ elif page == "Results":
 
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
+
+# Visualization Page
+elif page == "Visualization":
+    st.title("Visualization of Motif Analysis")
+    
+    if st.session_state["results_df"] is not None:
+        results_df = st.session_state["results_df"]
+        motif_counts = results_df["Motif"].value_counts().reset_index()
+        motif_counts.columns = ["Motif", "Count"]
+        
+        # Bar Chart
+        st.subheader("Motif Frequency Bar Chart")
+        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
+        st.plotly_chart(fig_bar)
+        
+        # Pie Chart
+        st.subheader("Motif Distribution Pie Chart")
+        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
+        st.plotly_chart(fig_pie)
+        
+        # Scatter Plot
+        st.subheader("Motif Positions in Sequences")
+        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
+        st.plotly_chart(fig_scatter)
+        
+        # Horizontal Thick Lines for Motif Positions
+        st.subheader("Motif Start and End Positions")
+
+        fig_lines = go.Figure()
+
+        for _, row in results_df.iterrows():
+            fig_lines.add_trace(go.Scatter(
+                x=[row["Start"], row["End"]],
+                y=[row["Motif"], row["Motif"]],
+                mode="lines",
+                line=dict(width=6),
+                name=row["Motif"]
+            ))
+
+        fig_lines.update_layout(
+            title="Motif Prediction Start and End Positions",
+            xaxis_title="Position in Sequence",
+            yaxis_title="Motif",
+            showlegend=False
+        )
+
+        st.plotly_chart(fig_lines)
+
+    else:
+        st.warning("No data available for visualization.")
 
 # Download Report Page
 elif page == "Download Report":
@@ -163,3 +191,4 @@ elif page == "Download Report":
         )
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
+
