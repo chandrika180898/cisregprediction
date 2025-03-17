@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 from Bio import SeqIO
 from io import StringIO
 import re
+from concurrent.futures import ProcessPoolExecutor
+from Bio.Seq import Seq
 
 # Initialize session state
 if "results_df" not in st.session_state:
@@ -37,6 +39,7 @@ elif page == "Upload & Analyze":
     def store_motif(start, end, motif_type):
         motifs.append(Motif(start, end, motif_type))
 
+    # **Motif Identification Functions**
     def find_direct_repeats(dna, min_size=6, max_gap=5):
         seq_len = len(dna)
         for i in range(seq_len - min_size):
@@ -72,6 +75,7 @@ elif page == "Upload & Analyze":
         for match in re.finditer(r"(g{4,})(.{0," + str(maxGQspacer) + r"})(g{4,})", dna, re.IGNORECASE):
             store_motif(match.start(), match.end(), "G-Quadruplex")
 
+    # **Processing FASTA Sequences**
     def read_fasta(file):
         sequences = []
         file_content = StringIO(file.getvalue().decode("utf-8"))
@@ -108,7 +112,7 @@ elif page == "Upload & Analyze":
             st.session_state["results_df"] = results_df
             st.success("Analysis completed! Go to 'Results' or 'Visualization' to view.")
 
-# Results Page
+# **Results Page**
 elif page == "Results":
     st.title("Analysis Results")
 
@@ -125,30 +129,30 @@ elif page == "Results":
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
 
-# Visualization Page
+# **Visualization Page**
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
-    
+
     if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
         motif_counts = results_df["Motif"].value_counts().reset_index()
         motif_counts.columns = ["Motif", "Count"]
-        
+
         # Bar Chart
         st.subheader("Motif Frequency Bar Chart")
         fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
         st.plotly_chart(fig_bar)
-        
+
         # Pie Chart
         st.subheader("Motif Distribution Pie Chart")
         fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
         st.plotly_chart(fig_pie)
-        
+
         # Scatter Plot
         st.subheader("Motif Positions in Sequences")
         fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
         st.plotly_chart(fig_scatter)
-        
+
         # Horizontal Thick Lines for Motif Positions
         st.subheader("Motif Start and End Positions")
 
@@ -175,20 +179,12 @@ elif page == "Visualization":
     else:
         st.warning("No data available for visualization.")
 
-# Download Report Page
+# **Download Report Page**
 elif page == "Download Report":
-    st.title("Download Analysis Report")
-
-    if st.session_state["results_df"] is not None:
+    st.title("Download Report")
+    if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
-        csv_data = results_df.to_csv(index=False).encode("utf-8")
-
-        st.download_button(
-            label="Download CSV Report",
-            data=csv_data,
-            file_name="motif_analysis_results.csv",
-            mime="text/csv"
-        )
+        csv = results_df.to_csv(index=False)
+        st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
     else:
-        st.warning("No results available. Please upload or paste a sequence first.")
-
+        st.warning("No data available. Please analyze sequences first.")
