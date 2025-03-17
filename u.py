@@ -132,43 +132,47 @@ elif page == "Results":
 # **Visualization Page**
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
-
-    if st.session_state["results_df"] is not None:
+    
+    if "results_df" in st.session_state:
         results_df = st.session_state["results_df"]
+        motif_counts = results_df["Motif"].value_counts().reset_index()
+        motif_counts.columns = ["Motif", "Count"]
         
-        # Ensure numeric values
-        results_df["Start"] = pd.to_numeric(results_df["Start"], errors="coerce")
-        results_df["End"] = pd.to_numeric(results_df["End"], errors="coerce")
-
-        # Assign categorical y-axis values
-        results_df["Motif"] = results_df["Motif"].astype(str)
-        unique_motifs = results_df["Motif"].unique()
-        motif_mapping = {motif: i for i, motif in enumerate(unique_motifs)}
-
-        # **Horizontal Thick Lines for Motif Positions**
+        # Bar Chart
+        st.subheader("Motif Frequency Bar Chart")
+        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
+        st.plotly_chart(fig_bar)
+        
+        # Pie Chart
+        st.subheader("Motif Distribution Pie Chart")
+        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
+        st.plotly_chart(fig_pie)
+        
+        # Scatter Plot
+        st.subheader("Motif Positions in Sequences")
+        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
+        st.plotly_chart(fig_scatter)
+        
+        # Horizontal Thick Lines for Motif Positions
         st.subheader("Motif Start and End Positions")
+        import plotly.graph_objects as go
+
         fig_lines = go.Figure()
 
         for _, row in results_df.iterrows():
-            y_position = motif_mapping[row["Motif"]]  # Assign numerical y-position
             fig_lines.add_trace(go.Scatter(
                 x=[row["Start"], row["End"]],
-                y=[y_position, y_position],
+                y=[row["Motif"], row["Motif"]],
                 mode="lines",
-                line=dict(width=10),  # Thick lines
+                line=dict(width=6),  # Thick lines for clarity
                 name=row["Motif"]
             ))
 
         fig_lines.update_layout(
             title="Motif Prediction Start and End Positions",
             xaxis_title="Position in Sequence",
-            yaxis=dict(
-                title="Motif",
-                tickvals=list(motif_mapping.values()),
-                ticktext=list(motif_mapping.keys()),
-                type="category"
-            ),
-            showlegend=True
+            yaxis_title="Motif",
+            showlegend=False
         )
 
         st.plotly_chart(fig_lines)
