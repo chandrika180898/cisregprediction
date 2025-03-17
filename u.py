@@ -135,40 +135,40 @@ elif page == "Visualization":
 
     if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
-        motif_counts = results_df["Motif"].value_counts().reset_index()
-        motif_counts.columns = ["Motif", "Count"]
-
-        # Bar Chart
-        st.subheader("Motif Frequency Bar Chart")
-        fig_bar = px.bar(motif_counts, x="Motif", y="Count", title="Frequency of Each Motif", color="Motif")
-        st.plotly_chart(fig_bar)
-
-        # Pie Chart
-        st.subheader("Motif Distribution Pie Chart")
-        fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
-        st.plotly_chart(fig_pie)
-
         
+        # Ensure numeric values
+        results_df["Start"] = pd.to_numeric(results_df["Start"], errors="coerce")
+        results_df["End"] = pd.to_numeric(results_df["End"], errors="coerce")
 
-        # Horizontal Thick Lines for Motif Positions
+        # Assign categorical y-axis values
+        results_df["Motif"] = results_df["Motif"].astype(str)
+        unique_motifs = results_df["Motif"].unique()
+        motif_mapping = {motif: i for i, motif in enumerate(unique_motifs)}
+
+        # **Horizontal Thick Lines for Motif Positions**
         st.subheader("Motif Start and End Positions")
-
         fig_lines = go.Figure()
 
         for _, row in results_df.iterrows():
+            y_position = motif_mapping[row["Motif"]]  # Assign numerical y-position
             fig_lines.add_trace(go.Scatter(
                 x=[row["Start"], row["End"]],
-                y=[row["Motif"], row["Motif"]],
+                y=[y_position, y_position],
                 mode="lines",
-                line=dict(width=6),
+                line=dict(width=10),  # Thick lines
                 name=row["Motif"]
             ))
 
         fig_lines.update_layout(
             title="Motif Prediction Start and End Positions",
             xaxis_title="Position in Sequence",
-            yaxis_title="Motif",
-            showlegend=False
+            yaxis=dict(
+                title="Motif",
+                tickvals=list(motif_mapping.values()),
+                ticktext=list(motif_mapping.keys()),
+                type="category"
+            ),
+            showlegend=True
         )
 
         st.plotly_chart(fig_lines)
@@ -185,3 +185,29 @@ elif page == "Download Report":
         st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
     else:
         st.warning("No data available. Please analyze sequences first.")
+elif page == "About":
+    st.title("About DNA Motif Analysis")
+    st.write("""
+    - **A-phased repeats (APRs):** Comprise three or more A/T-rich segments separated by 10-nucleotide spacers.
+    - **Direct repeats (DRs):** Consist of repeated 4- to 10-nucleotide sequences within a genome.
+    - **G-quadruplexes (G4s):** Four-stranded DNA structures stabilized by Hoogsteen hydrogen bonds and cations.
+    - **Inverted repeats (IRs):** Formed when inter-strand base pairing shifts to intra-strand pairing, leading to cruciform DNA.
+    - **Mirror repeats (MRs):** Homopurine/pyrimidine sequences with a mirrored arrangement, capable of forming triplex DNA.
+    - **Short tandem repeats (STRs):** Microsatellites with 2-6 bp nucleotide sequences repeating consecutively in a genome.
+    - **Z-DNA:** A non-canonical left-handed double-helix structure found in regulatory regions.
+    - **I-motif:** A four-stranded structure stabilized by cytosine–cytosine+ base pairs, forming under acidic conditions.
+    - **A-form DNA:** Inverted G/C tracts exhibiting A-like base stacking, recognized by transcription factors.
+    - **Parallel-stranded DNA:** Purine-rich sequences stabilized by reverse Hoogsteen hydrogen bonding, forming triplexes or quadruplexes.
+    """)
+
+
+# Contact Page
+elif page == "Contact":
+    st.title("Contact")
+    st.write("""
+        **Dr. Y V Rajesh**  
+        📧 Email: yvrajesh_bt@kluniversity.in 
+        
+        **G. Aruna Sesha Chandrika**  
+        📧 Email: chandrikagummadi1@gmail.com  
+    """)
