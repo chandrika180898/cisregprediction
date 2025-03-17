@@ -148,10 +148,7 @@ elif page == "Visualization":
         fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
         st.plotly_chart(fig_pie)
 
-        # Scatter Plot
-        st.subheader("Motif Positions in Sequences")
-        fig_scatter = px.scatter(results_df, x="Start", y="End", color="Motif", title="Start vs. End Positions of Motifs")
-        st.plotly_chart(fig_scatter)
+        
 
         # Horizontal Thick Lines for Motif Positions
         st.subheader("Motif Start and End Positions")
