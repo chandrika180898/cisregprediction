@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 from Bio import SeqIO
 from io import StringIO
 import re
-from Bio.Seq import Seq
 
 # Initialize session state
 if "results_df" not in st.session_state:
@@ -24,6 +23,7 @@ if page == "Home":
 # Upload & Analyze Page
 elif page == "Upload & Analyze":
     st.title('Upload and Analyze DNA Sequences')
+    
     uploaded_files = st.file_uploader("Upload FASTA Files", type=['fasta'], accept_multiple_files=True)
     pasted_sequence = st.text_area("Or Paste a DNA Sequence Here:")
 
@@ -38,7 +38,7 @@ elif page == "Upload & Analyze":
     def store_motif(start, end, motif_type):
         motifs.append(Motif(start, end, motif_type))
 
-    # **Motif Identification Functions**
+    # Motif Identification Functions
     def find_direct_repeats(dna, min_size=6, max_gap=5):
         seq_len = len(dna)
         for i in range(seq_len - min_size):
@@ -74,7 +74,7 @@ elif page == "Upload & Analyze":
         for match in re.finditer(r"(g{4,})(.{0," + str(maxGQspacer) + r"})(g{4,})", dna, re.IGNORECASE):
             store_motif(match.start(), match.end(), "G-Quadruplex")
 
-    # **Processing FASTA Sequences**
+    # Processing FASTA Sequences
     def read_fasta(file):
         sequences = []
         file_content = StringIO(file.getvalue().decode("utf-8"))
@@ -111,7 +111,7 @@ elif page == "Upload & Analyze":
             st.session_state["results_df"] = results_df
             st.success("Analysis completed! Go to 'Results' or 'Visualization' to view.")
 
-# **Results Page**
+# Results Page
 elif page == "Results":
     st.title("Analysis Results")
 
@@ -124,11 +124,10 @@ elif page == "Results":
         motif_counts.columns = ["Motif", "Count"]
         st.subheader("Motif Occurrence Summary")
         st.dataframe(motif_counts)
-
     else:
         st.warning("No results available. Please upload or paste a sequence first.")
 
-# **Visualization Page**
+# Visualization Page
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
 
@@ -147,9 +146,8 @@ elif page == "Visualization":
         fig_pie = px.pie(motif_counts, names="Motif", values="Count", title="Distribution of Motifs")
         st.plotly_chart(fig_pie)
 
-        # Horizontal Thick Lines for Motif Positions
+        # Motif Start and End Positions
         st.subheader("Motif Start and End Positions")
-
         fig_lines = go.Figure()
         motif_dict = {motif: i for i, motif in enumerate(results_df["Motif"].unique())}
 
@@ -175,11 +173,10 @@ elif page == "Visualization":
         )
 
         st.plotly_chart(fig_lines)
-
     else:
         st.warning("No data available for visualization.")
 
-# **Download Report Page**
+# Download Report Page
 elif page == "Download Report":
     st.title("Download Report")
     if "results_df" in st.session_state:
