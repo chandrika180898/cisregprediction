@@ -131,7 +131,7 @@ elif page == "Results":
 elif page == "Visualization":
     st.title("Visualization of Motif Analysis")
 
-    if "results_df" in st.session_state:
+    if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
         motif_counts = results_df["Motif"].value_counts().reset_index()
         motif_counts.columns = ["Motif", "Count"]
@@ -179,9 +179,20 @@ elif page == "Visualization":
 # Download Report Page
 elif page == "Download Report":
     st.title("Download Report")
-    if "results_df" in st.session_state:
+    if st.session_state["results_df"] is not None:
         results_df = st.session_state["results_df"]
         csv = results_df.to_csv(index=False)
         st.download_button("Download CSV", csv, file_name="motif_analysis_results.csv", mime="text/csv")
     else:
         st.warning("No data available. Please analyze sequences first.")
+
+# About and Contact Pages (Optional placeholders)
+elif page == "About":
+    st.title("About")
+    st.write("This tool is developed for DNA motif identification using Python, Streamlit, and BioPython.")
+
+elif page == "Contact":
+    st.title("Contact")
+    st.write("For any queries, please reach out at: **your_email@example.com**")
+
+
