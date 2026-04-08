@@ -1,9 +1,12 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
-import math
-import re
 from Bio import SeqIO
 from io import StringIO
+import re
+import plotly.express as px
+from concurrent.futures import ProcessPoolExecutor
+from reportlab.pdfgen import canvas
+from Bio.Seq import Seq
 
 st.title("Low Perplexity Non-B DNA Detector")
 
