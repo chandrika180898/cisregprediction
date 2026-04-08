@@ -2,15 +2,17 @@
 
 import math
 import re
-import csv
 import streamlit as st
+import pandas as pd
 
 
 def read_sequence(uploaded_file):
 
     seq = []
 
-    for line in uploaded_file.getvalue().decode("utf-8").splitlines():
+    text = uploaded_file.read().decode("utf-8")
+
+    for line in text.splitlines():
 
         if line.startswith(">"):
             continue
@@ -26,11 +28,14 @@ def read_sequence(uploaded_file):
 
 def calculate_perplexity(seq):
 
+    if len(seq) == 0:
+        return 0
+
     counts = {n: seq.count(n) for n in "ACGT"}
 
     total = sum(counts.values())
 
-    probabilities = [c/total for c in counts.values() if c > 0]
+    probabilities = [c / total for c in counts.values() if c > 0]
 
     entropy = -sum(p * math.log2(p) for p in probabilities)
 
@@ -42,13 +47,16 @@ def sliding_windows(seq, window=100):
     windows = []
     perplexities = []
 
+    if len(seq) < window:
+        return windows, perplexities
+
     for i in range(len(seq) - window + 1):
 
-        sub = seq[i:i+window]
+        sub = seq[i:i + window]
 
         p = calculate_perplexity(sub)
 
-        windows.append((i, i+window, p))
+        windows.append((i, i + window, p))
         perplexities.append(p)
 
     return windows, perplexities
@@ -56,9 +64,14 @@ def sliding_windows(seq, window=100):
 
 def percentile(values, percent):
 
+    if len(values) == 0:
+        return None
+
     values = sorted(values)
 
     index = int(len(values) * percent / 100)
+
+    index = min(index, len(values) - 1)
 
     return values[index]
 
@@ -66,6 +79,9 @@ def percentile(values, percent):
 def bottom_percentile_windows(windows, perplexities, percent=5):
 
     threshold = percentile(perplexities, percent)
+
+    if threshold is None:
+        return [], None
 
     regions = []
 
@@ -92,7 +108,6 @@ def merge_regions(regions):
 
         if s <= last[1]:
             last[1] = max(last[1], e)
-
         else:
             merged.append([s, e])
 
@@ -142,27 +157,38 @@ def intersect_motifs_lowP(motifs, regions):
 
     results = []
 
-    for name, ms, me, seq in motifs:
+    for name, ms, me, motif_seq in motifs:
 
         for rs, re in regions:
 
             if overlap(ms, me, rs, re):
 
-                results.append((name, ms, me, seq, rs, re))
+                results.append({
+                    "Motif": name,
+                    "Motif_start": ms,
+                    "Motif_end": me,
+                    "Motif_sequence": motif_seq,
+                    "LowP_start": rs,
+                    "LowP_end": re
+                })
 
     return results
 
+
+# ---------------- STREAMLIT UI ---------------- #
 
 st.title("Low Perplexity Non-B DNA Detector")
 
 uploaded_file = st.file_uploader(
     "Upload FASTA or TXT sequence",
-    type=["txt","fa","fasta"]
+    type=["txt", "fa", "fasta"]
 )
 
 if uploaded_file:
 
     seq = read_sequence(uploaded_file)
+
+    st.write("Sequence length:", len(seq))
 
     windows, perplexities = sliding_windows(seq, 100)
 
@@ -182,6 +208,23 @@ if uploaded_file:
 
     st.write("Perplexity threshold:", threshold)
 
-    st.write("Results:")
+    if overlaps:
 
-    st.dataframe(overlaps)
+        df = pd.DataFrame(overlaps)
+
+        st.write("Detected motifs in low perplexity regions")
+
+        st.dataframe(df)
+
+        csv = df.to_csv(index=False)
+
+        st.download_button(
+            "Download CSV",
+            csv,
+            "nonB_low_perplexity_results.csv",
+            "text/csv"
+        )
+
+    else:
+
+        st.warning("No Non-B DNA motifs found in low perplexity regions.")
