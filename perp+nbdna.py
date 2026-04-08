@@ -1,123 +1,103 @@
-# file: code.py
-
-import math
-import re
 import streamlit as st
 import pandas as pd
+import math
+import re
+from Bio import SeqIO
 from io import StringIO
 
+st.title("Low Perplexity Non-B DNA Detector")
 
-# ------------------------------
-# Read uploaded sequence
-# ------------------------------
+uploaded_files = st.file_uploader(
+    "Upload FASTA/TXT sequence",
+    type=["fasta","fa","txt"],
+    accept_multiple_files=True
+)
 
-def read_sequence(uploaded_file):
+# ----------------------------
+# READ SEQUENCE
+# ----------------------------
+def read_sequences(uploaded_file):
 
-    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+    sequences = []
 
-    seq = []
+    text = uploaded_file.getvalue().decode("utf-8")
 
-    for line in stringio:
+    if text.startswith(">"):
+        fasta = list(SeqIO.parse(StringIO(text), "fasta"))
+        for record in fasta:
+            sequences.append((record.id, str(record.seq).upper()))
+    else:
+        seq = re.sub("[^ACGT]", "", text.upper())
+        sequences.append(("sequence", seq))
 
-        if line.startswith(">"):
-            continue
-
-        seq.append(line.strip().upper())
-
-    sequence = "".join(seq)
-
-    sequence = re.sub("[^ACGT]", "", sequence)
-
-    return sequence
+    return sequences
 
 
-# ------------------------------
-# Perplexity
-# ------------------------------
-
+# ----------------------------
+# PERPLEXITY
+# ----------------------------
 def calculate_perplexity(seq):
-
-    if len(seq) == 0:
-        return 0
 
     counts = {n: seq.count(n) for n in "ACGT"}
 
     total = sum(counts.values())
 
-    probs = [c/total for c in counts.values() if c > 0]
+    probs = [c/total for c in counts.values() if c>0]
 
-    entropy = -sum(p * math.log2(p) for p in probs)
+    entropy = -sum(p*math.log2(p) for p in probs)
 
-    return 2 ** entropy
+    return 2**entropy
 
 
-# ------------------------------
-# Sliding window
-# ------------------------------
-
+# ----------------------------
+# SLIDING WINDOW
+# ----------------------------
 def sliding_windows(seq, window=100):
 
     windows = []
     perplexities = []
 
-    if len(seq) < window:
-        return windows, perplexities
-
-    for i in range(len(seq) - window + 1):
+    for i in range(len(seq)-window+1):
 
         sub = seq[i:i+window]
 
         p = calculate_perplexity(sub)
 
-        windows.append((i, i+window, p))
+        windows.append((i,i+window,p))
         perplexities.append(p)
 
     return windows, perplexities
 
 
-# ------------------------------
-# Percentile
-# ------------------------------
-
+# ----------------------------
+# LOW PERPLEXITY
+# ----------------------------
 def percentile(values, percent):
-
-    if not values:
-        return None
 
     values = sorted(values)
 
     index = int(len(values)*percent/100)
 
-    index = min(index, len(values)-1)
-
     return values[index]
 
-
-# ------------------------------
-# Low perplexity regions
-# ------------------------------
 
 def bottom_percentile_windows(windows, perplexities, percent=5):
 
     threshold = percentile(perplexities, percent)
 
-    if threshold is None:
-        return [], None
-
     regions = []
 
-    for s,e,p in windows:
+    for start,end,p in windows:
 
         if p <= threshold:
-            regions.append((s,e))
+            regions.append((start,end))
 
     return regions, threshold
 
 
-# ------------------------------
-# Merge regions
-# ------------------------------
-
+# ----------------------------
+# MERGE REGIONS
+# ----------------------------
 def merge_regions(regions):
 
     if not regions:
@@ -132,25 +112,22 @@ def merge_regions(regions):
         last = merged[-1]
 
         if s <= last[1]:
-
-            last[1] = max(last[1],e)
+            last[1] = max(last[1], e)
 
         else:
-
             merged.append([s,e])
 
     return merged
 
 
-# ------------------------------
-# Non-B DNA regex
-# ------------------------------
-
+# ----------------------------
+# NON-B DNA REGEX
+# ----------------------------
 def build_nonb_regex():
 
     motifs = {
 
-        "polyA_polyT": r"A{7,}|T{7,}",
+        "PolyA_T": r"A{7,}|T{7,}",
 
         "STR_repeat": r"([ACGT]{1,6})\1{4,}",
 
@@ -167,10 +144,9 @@ def build_nonb_regex():
     return {k: re.compile(v) for k,v in motifs.items()}
 
 
-# ------------------------------
-# Scan motifs
-# ------------------------------
-
+# ----------------------------
+# SCAN MOTIFS
+# ----------------------------
 def scan_motifs(seq, regex_dict):
 
     hits = []
@@ -184,20 +160,19 @@ def scan_motifs(seq, regex_dict):
     return hits
 
 
-# ------------------------------
-# Overlap
-# ------------------------------
+# ----------------------------
+# OVERLAP
+# ----------------------------
+def overlap(a_start,a_end,b_start,b_end):
 
-def overlap(a1,a2,b1,b2):
-
-    return max(a1,b1) < min(a2,b2)
+    return max(a_start,b_start) < min(a_end,b_end)
 
 
-def intersect_motifs_lowP(motifs,regions):
+def intersect_motifs_lowP(motifs, regions):
 
-    results=[]
+    results = []
 
-    for name,ms,me,mseq in motifs:
+    for name,ms,me,seq in motifs:
 
         for rs,re in regions:
 
@@ -207,7 +182,7 @@ def intersect_motifs_lowP(motifs,regions):
                     "Motif":name,
                     "Motif_start":ms,
                     "Motif_end":me,
-                    "Motif_sequence":mseq,
+                    "Sequence":seq,
                     "LowP_start":rs,
                     "LowP_end":re
                 })
@@ -215,54 +190,62 @@ def intersect_motifs_lowP(motifs,regions):
     return results
 
 
-# ------------------------------
-# STREAMLIT UI
-# ------------------------------
+# ----------------------------
+# MAIN ANALYSIS
+# ----------------------------
+if uploaded_files:
 
-st.title("Low-Perplexity Non-B DNA Detector")
-
-uploaded_file = st.file_uploader(
-    "Upload FASTA / TXT file",
-    type=["txt","fa","fasta"]
-)
-
-if uploaded_file is not None:
-
-    seq = read_sequence(uploaded_file)
-
-    st.write("Sequence length:",len(seq))
-
-    windows,perplexities = sliding_windows(seq,100)
-
-    low_regions,threshold = bottom_percentile_windows(
-        windows,
-        perplexities,
-        5
-    )
-
-    merged = merge_regions(low_regions)
+    all_results = []
 
     regex_dict = build_nonb_regex()
 
-    motifs = scan_motifs(seq,regex_dict)
+    for file in uploaded_files:
 
-    overlaps = intersect_motifs_lowP(motifs,merged)
+        sequences = read_sequences(file)
 
-    st.write("Perplexity threshold:",threshold)
+        for seq_id,seq in sequences:
 
-    if overlaps:
+            windows,perplexities = sliding_windows(seq,100)
 
-        df = pd.DataFrame(overlaps)
+            low_regions,threshold = bottom_percentile_windows(
+                windows,
+                perplexities,
+                5
+            )
 
-        st.dataframe(df)
+            merged = merge_regions(low_regions)
 
-        st.download_button(
-            "Download CSV",
-            df.to_csv(index=False),
-            "nonB_low_perplexity_results.csv",
-            "text/csv"
-        )
+            motifs = scan_motifs(seq,regex_dict)
 
-    else:
+            overlaps = intersect_motifs_lowP(motifs,merged)
 
-        st.warning("No motifs found in low-perplexity regions")
+            for r in overlaps:
+                r["Sequence_ID"] = seq_id
+                all_results.append(r)
+
+    df = pd.DataFrame(all_results)
+
+    st.session_state["results"] = df
+
+    st.success("Analysis complete")
+
+
+# ----------------------------
+# RESULTS
+# ----------------------------
+if "results" in st.session_state:
+
+    df = st.session_state["results"]
+
+    st.subheader("Detected Motifs in Low Perplexity Regions")
+
+    st.dataframe(df)
+
+    csv = df.to_csv(index=False)
+
+    st.download_button(
+        "Download CSV",
+        csv,
+        "low_perplexity_nonB_results.csv",
+        "text/csv"
+    )
