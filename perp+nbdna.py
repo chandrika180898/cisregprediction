@@ -5,25 +5,6 @@ from io import StringIO
 import re
 import math
 
-# Sidebar
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Home","Upload & Analyze","Results"])
-
-# ---------------- HOME ----------------
-if page == "Home":
-    st.title("Low Perplexity Non-B DNA Detector")
-
-    st.write("""
-    This tool detects **Non-B DNA motifs located in low-perplexity regions**.
-
-    Pipeline:
-    1. Sliding window (100 bp)
-    2. Calculate perplexity
-    3. Select bottom 5% windows
-    4. Merge overlapping regions
-    5. Detect Non-B DNA motifs
-    """)
-
 # ---------------- FUNCTIONS ----------------
 
 def calc_perplexity_from_counts(counts):
@@ -152,8 +133,6 @@ def overlap(a_start,a_end,b_start,b_end):
     return max(a_start,b_start) < min(a_end,b_end)
 
 
-# ---------------- ANALYSIS ----------------
-
 def analyze_sequences(sequences):
 
     regex_dict = build_nonb_regex()
@@ -165,10 +144,6 @@ def analyze_sequences(sequences):
         seq=str(record.seq).upper()
 
         if len(seq) < 100:
-            continue
-
-        if len(seq) > 500000:
-            st.warning(f"{record.id} skipped (sequence too large)")
             continue
 
         windows,perplexities = sliding_windows(seq,100)
@@ -200,6 +175,28 @@ def analyze_sequences(sequences):
     return pd.DataFrame(results)
 
 
+# ---------------- SIDEBAR ----------------
+
+st.sidebar.title("Navigation")
+
+page = st.sidebar.radio("Go to", ["Home","Upload & Analyze","Results"])
+
+
+# ---------------- HOME ----------------
+
+if page == "Home":
+
+    st.title("Low Perplexity Non-B DNA Detector")
+
+    st.write("""
+    Pipeline:
+    1. Sliding window (100 bp)
+    2. Perplexity calculation
+    3. Bottom 5% regions
+    4. Motif detection
+    """)
+
+
 # ---------------- UPLOAD PAGE ----------------
 
 elif page == "Upload & Analyze":
@@ -216,33 +213,27 @@ elif page == "Upload & Analyze":
 
         if st.button("Run Analysis"):
 
-            try:
+            all_sequences=[]
 
-                all_sequences=[]
+            for uploaded_file in uploaded_files:
 
-                for uploaded_file in uploaded_files:
-
-                    fasta_sequences=list(
-                        SeqIO.parse(
-                            StringIO(uploaded_file.getvalue().decode("utf-8")),
-                            "fasta"
-                        )
+                fasta_sequences=list(
+                    SeqIO.parse(
+                        StringIO(uploaded_file.getvalue().decode("utf-8")),
+                        "fasta"
                     )
+                )
 
-                    all_sequences.extend(fasta_sequences)
+                all_sequences.extend(fasta_sequences)
 
-                results_df = analyze_sequences(all_sequences)
+            results_df = analyze_sequences(all_sequences)
 
-                st.session_state["results_df"] = results_df
+            st.session_state["results_df"] = results_df
 
-                st.success("Analysis completed!")
-
-            except Exception as e:
-
-                st.error(f"Error: {e}")
+            st.success("Analysis completed!")
 
 
-# ---------------- RESULTS PAGE ----------------
+# ---------------- RESULTS ----------------
 
 elif page == "Results":
 
@@ -265,4 +256,4 @@ elif page == "Results":
 
     else:
 
-        st.warning("No results available. Run analysis first.")
+        st.warning("Run analysis first.")
